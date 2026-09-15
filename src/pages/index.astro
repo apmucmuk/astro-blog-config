@@ -1,18 +1,14 @@
 ---
+import BaseLayout from "@theme/layouts/BaseLayout.astro";
 import { projectConfig } from "@project/index";
+import { navigation } from "@project/navigation";
 ---
 
-<!doctype html>
-<html lang={projectConfig.locale}>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{projectConfig.name}</title>
-  </head>
-  <body>
-    <main>
+<BaseLayout title={projectConfig.name} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
+  <section class="hero">
+    <div class="hero__inner container">
       <h1>{projectConfig.name}</h1>
-      <p>Stage 1 repository skeleton.</p>
-    </main>
-  </body>
-</html>
+      <p class="lede">Praktyczne poradniki i redakcyjny fundament serwisu o przeprowadzkach.</p>
+    </div>
+  </section>
+</BaseLayout>

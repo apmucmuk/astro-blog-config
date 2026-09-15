@@ -1,0 +1,45 @@
+---
+import "../styles/global.css";
+
+type Props = {
+  title?: string;
+  description?: string;
+  locale: string;
+  siteName: string;
+  navigation: ReadonlyArray<{ label: string; href: string }>;
+};
+
+const { title, description, locale, siteName, navigation } = Astro.props;
+---
+
+<!doctype html>
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title ?? siteName}</title>
+    {description && <meta name="description" content={description} />}
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Przejdź do treści</a>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="site-header__inner container">
+          <a class="brand" href="/">{siteName}</a>
+          <nav class="site-nav" aria-label="Główna nawigacja">
+            {navigation.map((item) => <a href={item.href}>{item.label}</a>)}
+          </nav>
+        </div>
+      </header>
+      <main id="main" class="site-main" tabindex="-1">
+        <slot />
+      </main>
+      <footer class="site-footer">
+        <div class="site-footer__inner container">
+          <p>© {new Date().getFullYear()} {siteName}</p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -4,6 +4,8 @@ import { filterPublished } from "@core/content/lifecycle";
 import { articleCanonical, hreflangLinks } from "@core/seo/hreflang";
 import { blogPostingJsonLd, breadcrumbJsonLd, seoMetadata } from "@core/seo/metadata";
 import { personPath } from "@core/routing/routes";
+import BaseLayout from "@theme/layouts/BaseLayout.astro";
+import { navigation } from "@project/navigation";
 import { projectConfig } from "@project/site.config";
 import { routeSegments } from "@project/routing.config";
 import categories from "../../../content/data/categories.json";
@@ -101,35 +103,43 @@ const jsonLd = [
 ];
 ---
 
-<!doctype html>
-<html lang={article.data.locale}>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{metadata.title}</title>
+<BaseLayout title={metadata.title} description={metadata.description} locale={article.data.locale} siteName={projectConfig.name} navigation={navigation}>
+  <Fragment slot="head">
     <meta name="description" content={metadata.description} />
     <meta name="robots" content={metadata.robots} />
     <link rel="canonical" href={metadata.canonical} />
     {alternates.map((alternate) => <link rel="alternate" hreflang={alternate.hreflang} href={alternate.href} />)}
     <link rel="alternate" hreflang="x-default" href={metadata.canonical} />
     {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}
-  </head>
-  <body>
-    <main>
-      <article>
-        <nav aria-label="Breadcrumbs">
-          {breadcrumbs.map((item, index) => (
-            <a href={item.url}>{item.name}{index < breadcrumbs.length - 1 ? " / " : ""}</a>
-          ))}
-        </nav>
-        <p>{category.name}</p>
+  </Fragment>
+  <article>
+    <header class="article-header article-container">
+      <nav class="breadcrumb" aria-label="Breadcrumbs">
+        {breadcrumbs.map((item, index) => (
+          <a href={item.url}>{item.name}{index < breadcrumbs.length - 1 ? " / " : ""}</a>
+        ))}
+      </nav>
+      <p class="eyebrow">{category.name}</p>
+      <div class="article-meta">
+        {authorProfiles.map((author) => <a href={author.url}>{author.name}</a>)}
+        <time datetime={article.data.publishDate.toISOString()}>{article.data.publishDate.toLocaleDateString("pl-PL")}</time>
+      </div>
+      <div class="hero__inner">
         <h1>{article.data.title}</h1>
-        <p>{article.data.description}</p>
-        <p>
-          {authorProfiles.map((author) => <a href={author.url}>{author.name}</a>)}
-        </p>
+        <p class="lede">{article.data.description}</p>
+      </div>
+      <img
+        class="article-hero"
+        src={article.data.image.src}
+        alt={article.data.image.alt}
+        width="1200"
+        height="630"
+        loading="eager"
+        fetchpriority="high"
+      />
+    </header>
+    <div class="article-body article-container">
         <Content />
-      </article>
-    </main>
-  </body>
-</html>
+    </div>
+  </article>
+</BaseLayout>

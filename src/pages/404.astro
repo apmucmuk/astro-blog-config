@@ -1,5 +1,7 @@
 ---
+import BaseLayout from "@theme/layouts/BaseLayout.astro";
 import { seoMetadata } from "@core/seo/metadata";
+import { navigation } from "@project/navigation";
 import { projectConfig } from "@project/site.config";
 
 const metadata = seoMetadata({
@@ -11,20 +13,16 @@ const metadata = seoMetadata({
 });
 ---
 
-<!doctype html>
-<html lang={projectConfig.locale}>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{metadata.title}</title>
+<BaseLayout title={metadata.title} description={metadata.description} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
+  <Fragment slot="head">
     <meta name="description" content={metadata.description} />
     <meta name="robots" content="noindex,follow" />
-  </head>
-  <body>
-    <main>
+  </Fragment>
+  <section class="hero">
+    <div class="hero__inner container">
       <h1>Nie znaleziono strony</h1>
-      <p>Sprawdź adres albo wróć do strony głównej.</p>
+      <p class="lede">Sprawdź adres albo wróć do strony głównej.</p>
       <a href="/">Strona główna</a>
-    </main>
-  </body>
-</html>
+    </div>
+  </section>
+</BaseLayout>

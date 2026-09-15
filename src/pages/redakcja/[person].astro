@@ -3,6 +3,8 @@ import { getCollection } from "astro:content";
 import { filterPublished } from "@core/content/lifecycle";
 import { breadcrumbJsonLd, personProfileJsonLd, seoMetadata } from "@core/seo/metadata";
 import { personPath } from "@core/routing/routes";
+import BaseLayout from "@theme/layouts/BaseLayout.astro";
+import { navigation } from "@project/navigation";
 import { projectConfig } from "@project/site.config";
 import { routeSegments } from "@project/routing.config";
 
@@ -46,37 +48,35 @@ const jsonLd = [
 ];
 ---
 
-<!doctype html>
-<html lang={person.data.locale}>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{metadata.title}</title>
+<BaseLayout title={metadata.title} description={metadata.description} locale={person.data.locale} siteName={projectConfig.name} navigation={navigation}>
+  <Fragment slot="head">
     <meta name="description" content={metadata.description} />
     <meta name="robots" content={metadata.robots} />
     <link rel="canonical" href={metadata.canonical} />
     {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}
-  </head>
-  <body>
-    <main>
-      <nav aria-label="Breadcrumbs">
+  </Fragment>
+  <section class="profile container">
+    <nav class="breadcrumb" aria-label="Breadcrumbs">
         {breadcrumbs.map((item, index) => <a href={item.url}>{item.name}{index < breadcrumbs.length - 1 ? " / " : ""}</a>)}
       </nav>
+    <header class="hero__inner">
       <h1>{person.data.name}</h1>
-      <p>{person.data.headline}</p>
+      <p class="lede">{person.data.headline}</p>
       <p>{person.data.bio}</p>
+    </header>
+    <div class="card-grid">
       {authoredArticles.length > 0 && (
-        <section>
+        <section class="card">
           <h2>Publikacje autora</h2>
           <ul>{authoredArticles.map((article) => <li>{article.data.title}</li>)}</ul>
         </section>
       )}
       {contributedArticles.length > 0 && (
-        <section>
+        <section class="card">
           <h2>Redakcja i weryfikacja</h2>
           <ul>{contributedArticles.map((article) => <li>{article.data.title}</li>)}</ul>
         </section>
       )}
-    </main>
-  </body>
-</html>
+    </div>
+  </section>
+</BaseLayout>
