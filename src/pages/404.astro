@@ -1,0 +1,30 @@
+---
+import { seoMetadata } from "@core/seo/metadata";
+import { projectConfig } from "@project/site.config";
+
+const metadata = seoMetadata({
+  title: "Nie znaleziono strony - tragarze.pl",
+  description: "Ta strona nie istnieje albo została przeniesiona.",
+  pathname: "/404/",
+  siteUrl: projectConfig.siteUrl,
+  noindex: true,
+});
+---
+
+<!doctype html>
+<html lang={projectConfig.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{metadata.title}</title>
+    <meta name="description" content={metadata.description} />
+    <meta name="robots" content="noindex,follow" />
+  </head>
+  <body>
+    <main>
+      <h1>Nie znaleziono strony</h1>
+      <p>Sprawdź adres albo wróć do strony głównej.</p>
+      <a href="/">Strona główna</a>
+    </main>
+  </body>
+</html>

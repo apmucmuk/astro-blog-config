@@ -1,0 +1,69 @@
+---
+import { getCollection } from "astro:content";
+import { breadcrumbJsonLd, personProfileJsonLd, seoMetadata } from "@core/seo/metadata";
+import { personPath } from "@core/routing/routes";
+import { projectConfig } from "@project/site.config";
+import { routeSegments } from "@project/routing.config";
+
+const people = (await getCollection("people")).sort((a, b) => b.data.rank - a.data.rank);
+const metadata = seoMetadata({
+  title: "Redakcja tragarze.pl",
+  description: "Poznaj redakcję i autorów publikacji tragarze.pl.",
+  pathname: "/redakcja/",
+  siteUrl: projectConfig.siteUrl,
+});
+const breadcrumbs = [
+  { name: "Strona główna", url: projectConfig.siteUrl },
+  { name: "Redakcja", url: metadata.canonical },
+];
+const jsonLd = [
+  breadcrumbJsonLd(breadcrumbs),
+  ...people.map((person) =>
+    personProfileJsonLd({
+      name: person.data.name,
+      description: person.data.bioShort,
+      url: new URL(
+        personPath({ segments: routeSegments, personSlug: person.data.slug }),
+        projectConfig.siteUrl,
+      ).toString(),
+    }),
+  ),
+];
+---
+
+<!doctype html>
+<html lang={projectConfig.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{metadata.title}</title>
+    <meta name="description" content={metadata.description} />
+    <meta name="robots" content={metadata.robots} />
+    <link rel="canonical" href={metadata.canonical} />
+    {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumbs">
+        {breadcrumbs.map((item, index) => <a href={item.url}>{item.name}{index < breadcrumbs.length - 1 ? " / " : ""}</a>)}
+      </nav>
+      <h1>Redakcja tragarze.pl</h1>
+      <p>Opisujemy, jak przygotować przeprowadzkę, zabezpieczyć rzeczy i lepiej zaplanować pracę tragarzy.</p>
+      <section>
+        <h2>Jak tworzymy materiały</h2>
+        <p>Publikacje powstają na podstawie praktycznych scenariuszy przeprowadzek i są porządkowane przez redakcję.</p>
+      </section>
+      <section>
+        <h2>Autorzy</h2>
+        <ul>
+          {people.map((person) => (
+            <li>
+              <a href={personPath({ segments: routeSegments, personSlug: person.data.slug })}>{person.data.name}</a>
+              <p>{person.data.headline}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </main>
+  </body>
+</html>

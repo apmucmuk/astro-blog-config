@@ -1,7 +1,8 @@
-import { articlePath, type Locale } from "../routing/routes";
+import { articlePath, type RouteSegments } from "../routing/routes";
 
 export type TranslationRoute = {
-  locale: Locale;
+  locale: string;
+  segments: RouteSegments;
   categorySlug: string;
   articleSlug: string;
   siteUrl: string;
@@ -14,7 +15,7 @@ export function canonicalUrl(pathname: string, siteUrl: string): string {
 export function articleCanonical(input: TranslationRoute): string {
   return canonicalUrl(
     articlePath({
-      locale: input.locale,
+      segments: input.segments,
       categorySlug: input.categorySlug,
       articleSlug: input.articleSlug,
     }),

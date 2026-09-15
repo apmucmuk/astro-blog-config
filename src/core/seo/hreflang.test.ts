@@ -6,6 +6,7 @@ describe("canonical and hreflang helpers", () => {
     expect(
       articleCanonical({
         locale: "pl",
+        segments: { blog: "blog", editorial: "redakcja" },
         categorySlug: "poradniki",
         articleSlug: "jak-przygotowac-przeprowadzke",
         siteUrl: "https://tragarze.pl",
@@ -18,6 +19,7 @@ describe("canonical and hreflang helpers", () => {
       hreflangLinks([
         {
           locale: "pl",
+          segments: { blog: "blog", editorial: "redakcja" },
           categorySlug: "poradniki",
           articleSlug: "jak-przygotowac-przeprowadzke",
           siteUrl: "https://tragarze.pl",

@@ -1,0 +1,82 @@
+---
+import { getCollection } from "astro:content";
+import { filterPublished } from "@core/content/lifecycle";
+import { breadcrumbJsonLd, personProfileJsonLd, seoMetadata } from "@core/seo/metadata";
+import { personPath } from "@core/routing/routes";
+import { projectConfig } from "@project/site.config";
+import { routeSegments } from "@project/routing.config";
+
+export async function getStaticPaths() {
+  const people = await getCollection("people");
+  const articles = filterPublished(await getCollection("blog"));
+
+  return people.map((person) => ({
+    params: { person: person.data.slug },
+    props: {
+      person,
+      authoredArticles: articles.filter((article) => article.data.authors.includes(person.data.id)),
+      contributedArticles: articles.filter((article) =>
+        article.data.contributors.some((contributor) => contributor.person === person.data.id),
+      ),
+    },
+  }));
+}
+
+const { person, authoredArticles, contributedArticles } = Astro.props;
+const pathname = personPath({ segments: routeSegments, personSlug: person.data.slug });
+const metadata = seoMetadata({
+  title: `${person.data.name} - redakcja tragarze.pl`,
+  description: person.data.bioShort,
+  pathname,
+  siteUrl: projectConfig.siteUrl,
+  noindex: person.data.noindex,
+});
+const breadcrumbs = [
+  { name: "Strona główna", url: projectConfig.siteUrl },
+  { name: "Redakcja", url: new URL("/redakcja/", projectConfig.siteUrl).toString() },
+  { name: person.data.name, url: metadata.canonical },
+];
+const jsonLd = [
+  breadcrumbJsonLd(breadcrumbs),
+  personProfileJsonLd({
+    name: person.data.name,
+    description: person.data.bioShort,
+    url: metadata.canonical,
+  }),
+];
+---
+
+<!doctype html>
+<html lang={person.data.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{metadata.title}</title>
+    <meta name="description" content={metadata.description} />
+    <meta name="robots" content={metadata.robots} />
+    <link rel="canonical" href={metadata.canonical} />
+    {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}
+  </head>
+  <body>
+    <main>
+      <nav aria-label="Breadcrumbs">
+        {breadcrumbs.map((item, index) => <a href={item.url}>{item.name}{index < breadcrumbs.length - 1 ? " / " : ""}</a>)}
+      </nav>
+      <h1>{person.data.name}</h1>
+      <p>{person.data.headline}</p>
+      <p>{person.data.bio}</p>
+      {authoredArticles.length > 0 && (
+        <section>
+          <h2>Publikacje autora</h2>
+          <ul>{authoredArticles.map((article) => <li>{article.data.title}</li>)}</ul>
+        </section>
+      )}
+      {contributedArticles.length > 0 && (
+        <section>
+          <h2>Redakcja i weryfikacja</h2>
+          <ul>{contributedArticles.map((article) => <li>{article.data.title}</li>)}</ul>
+        </section>
+      )}
+    </main>
+  </body>
+</html>

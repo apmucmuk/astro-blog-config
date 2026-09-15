@@ -7,14 +7,33 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 2 - content + routing + i18n.
+Stage 3 - SEO shell.
 
 ## Status
 `complete`
 
-Stage 2 implementation has been verified locally in the repository branch `codex/stage-2-content-routing-i18n`.
+Stage 3 implementation has been verified locally in the repository branch `codex/stage-3-seo-shell`.
 
 ## Verified checks
+### Stage 3
+- 2026-09-15 19:01 +02:00 - `pnpm test` - PASS. Vitest reported 3 test files passed and 10 tests passed.
+- 2026-09-15 19:01 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
+- 2026-09-15 19:01 +02:00 - `pnpm build` - PASS. Production static build generated article, editorial/person pages, `404.html`, `redirects.json`, `robots.txt`, `rss.xml`, `sitemap.xml` and homepage.
+- 2026-09-15 19:01 +02:00 - `pnpm seo:validate` - PASS. Production-build HTML/output inspection verified title/description, canonical, hreflang, robots, sitemap/RSS filtering, breadcrumbs JSON-LD, BlogPosting JSON-LD, ProfilePage/Person JSON-LD, 404 noindex/no canonical and redirect manifest output.
+- 2026-09-15 19:02 +02:00 - `pnpm preview -- --host 127.0.0.1 --port 4322` plus HTTP probes - PASS. Published article returned 200, unknown URL returned real 404, sitemap returned 200 with XML content type. Preview server was stopped.
+- 2026-09-15 19:02 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current.
+- 2026-09-15 22:59 +02:00 - resumed verification after limit reset - PASS. Re-ran `pnpm test`, `pnpm check`, `pnpm build`, `pnpm seo:validate`, `pnpm install --frozen-lockfile --config.confirmModulesPurge=false`, and preview HTTP probes; article returned 200, unknown URL returned 404, sitemap returned 200 with XML content type. Preview server was stopped.
+
+### Stage 3 implementation notes
+- Added reusable SEO primitives for metadata, canonical URL, breadcrumbs JSON-LD, BlogPosting JSON-LD and ProfilePage/Person JSON-LD.
+- Updated article page to render title/description, canonical, robots, real translationKey-based hreflang, x-default, breadcrumbs, BlogPosting and author profile links.
+- Added project-owned editorial index `/redakcja/` and person profile `/redakcja/{person}/` with canonical metadata, breadcrumbs and ProfilePage/Person structured data.
+- Added project-owned `src/pages/404.astro`; production preview verified unknown URLs return HTTP 404.
+- Added generated `sitemap.xml`, `rss.xml`, `robots.txt` and `redirects.json`.
+- Added redirect manifest coverage from article `redirectFrom`.
+- Addressed Stage 2 carry-forward: CORE route/SEO helpers no longer hardcode `pl`; project route segments and locale remain project-owned, and hreflang alternates are generated only from existing published entries sharing the same `translationKey`.
+- Did not start Stage 4 theme/performance work.
+
 ### Stage 2
 - 2026-09-15 18:51 +02:00 - `pnpm content:validate` - PASS. Content validation reported 3 article(s), 1 person record, and 1 category.
 - 2026-09-15 18:51 +02:00 - `pnpm test` - PASS. Vitest reported 3 test files passed and 10 tests passed, including draft/scheduled lifecycle, canonical/hreflang helpers, duplicate article id, duplicate route, unknown category and unknown author failures.
@@ -45,20 +64,22 @@ Stage 2 implementation has been verified locally in the repository branch `codex
 
 Note: `ASTRO_TELEMETRY_DISABLED=1` was required in this sandbox because Astro telemetry attempted to create `C:\Users\sunpl\AppData\Roaming\astro\Config`, which is outside the writable workspace. This was an environment permission issue, not a project type/build failure.
 
-## Required Stage 2 checks
+## Required Stage 3 checks
 The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks include:
-- sample article renders;
-- draft excluded in production;
-- scheduled excluded in production;
-- duplicate id fails validation;
-- duplicate route fails validation;
-- category validation works;
-- author validation works;
-- localized route generation works;
-- canonical/hreflang pass representative test.
+- title/description;
+- canonical;
+- hreflang;
+- robots behavior;
+- sitemap;
+- RSS;
+- breadcrumbs;
+- BlogPosting;
+- Person/Profile where applicable;
+- 404 real route/template behavior;
+- redirect manifest.
 
 ## Blockers
-None for Stage 2. Existing open questions do not block content/routing/i18n skeleton work.
+None for Stage 3. Existing open questions do not block SEO shell work.
 
 ## Update rules
 After work on a stage, record:

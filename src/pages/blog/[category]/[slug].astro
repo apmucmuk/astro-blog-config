@@ -1,12 +1,16 @@
 ---
 import { getCollection, render } from "astro:content";
 import { filterPublished } from "@core/content/lifecycle";
-import { articleCanonical } from "@core/seo/hreflang";
+import { articleCanonical, hreflangLinks } from "@core/seo/hreflang";
+import { blogPostingJsonLd, breadcrumbJsonLd, seoMetadata } from "@core/seo/metadata";
+import { personPath } from "@core/routing/routes";
 import { projectConfig } from "@project/site.config";
+import { routeSegments } from "@project/routing.config";
 import categories from "../../../content/data/categories.json";
 
 export async function getStaticPaths() {
   const articles = filterPublished(await getCollection("blog"));
+  const people = await getCollection("people");
 
   return articles.map((article) => {
     const category = categories.find((item) => item.id === article.data.category);
@@ -21,20 +25,80 @@ export async function getStaticPaths() {
       },
       props: {
         article,
+        articles,
         category,
+        people,
       },
     };
   });
 }
 
-const { article, category } = Astro.props;
+const { article, articles, category, people } = Astro.props;
 const { Content } = await render(article);
 const canonical = articleCanonical({
   locale: article.data.locale,
+  segments: routeSegments,
   categorySlug: category.slug,
   articleSlug: article.data.slug,
   siteUrl: projectConfig.siteUrl,
 });
+const translations = articles.filter(
+  (candidate) => candidate.data.translationKey === article.data.translationKey,
+);
+const alternates = hreflangLinks(
+  translations.map((translation) => {
+    const translationCategory = categories.find((item) => item.id === translation.data.category);
+    if (!translationCategory) {
+      throw new Error(`Unknown category '${translation.data.category}' for article '${translation.id}'.`);
+    }
+
+    return {
+      locale: translation.data.locale,
+      segments: routeSegments,
+      categorySlug: translationCategory.slug,
+      articleSlug: translation.data.slug,
+      siteUrl: projectConfig.siteUrl,
+    };
+  }),
+);
+const metadata = seoMetadata({
+  title: article.data.seoTitle ?? article.data.title,
+  description: article.data.description,
+  pathname: new URL(canonical).pathname,
+  siteUrl: projectConfig.siteUrl,
+  noindex: article.data.noindex,
+});
+const authorProfiles = article.data.authors.map((authorId) => {
+  const person = people.find((item) => item.data.id === authorId);
+  if (!person) {
+    throw new Error(`Unknown author '${authorId}' for article '${article.id}'.`);
+  }
+
+  const profileUrl = new URL(
+    personPath({ segments: routeSegments, personSlug: person.data.slug }),
+    projectConfig.siteUrl,
+  ).toString();
+
+  return { name: person.data.name, url: profileUrl };
+});
+const breadcrumbs = [
+  { name: "Strona główna", url: projectConfig.siteUrl },
+  { name: "Blog", url: new URL("/blog/", projectConfig.siteUrl).toString() },
+  { name: category.name, url: new URL(`/blog/${category.slug}/`, projectConfig.siteUrl).toString() },
+  { name: article.data.title, url: canonical },
+];
+const jsonLd = [
+  breadcrumbJsonLd(breadcrumbs),
+  blogPostingJsonLd({
+    headline: article.data.title,
+    description: article.data.description,
+    url: canonical,
+    datePublished: article.data.publishDate.toISOString(),
+    dateModified: article.data.updatedDate?.toISOString(),
+    author: authorProfiles,
+    image: new URL(article.data.image.src, projectConfig.siteUrl).toString(),
+  }),
+];
 ---
 
 <!doctype html>
@@ -42,18 +106,28 @@ const canonical = articleCanonical({
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{article.data.seoTitle ?? article.data.title}</title>
-    <meta name="description" content={article.data.description} />
-    <link rel="canonical" href={canonical} />
-    <link rel="alternate" hreflang={article.data.locale} href={canonical} />
-    <link rel="alternate" hreflang="x-default" href={canonical} />
+    <title>{metadata.title}</title>
+    <meta name="description" content={metadata.description} />
+    <meta name="robots" content={metadata.robots} />
+    <link rel="canonical" href={metadata.canonical} />
+    {alternates.map((alternate) => <link rel="alternate" hreflang={alternate.hreflang} href={alternate.href} />)}
+    <link rel="alternate" hreflang="x-default" href={metadata.canonical} />
+    {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}
   </head>
   <body>
     <main>
       <article>
+        <nav aria-label="Breadcrumbs">
+          {breadcrumbs.map((item, index) => (
+            <a href={item.url}>{item.name}{index < breadcrumbs.length - 1 ? " / " : ""}</a>
+          ))}
+        </nav>
         <p>{category.name}</p>
         <h1>{article.data.title}</h1>
         <p>{article.data.description}</p>
+        <p>
+          {authorProfiles.map((author) => <a href={author.url}>{author.name}</a>)}
+        </p>
         <Content />
       </article>
     </main>
