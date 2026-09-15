@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Pudła do przeprowadzki</title>
+  <desc id="desc">Prosty placeholder obrazu dla artykułu testowego.</desc>
+  <rect width="1200" height="630" fill="#f5f1e8"/>
+  <rect x="260" y="240" width="230" height="210" fill="#c88f4a"/>
+  <rect x="520" y="190" width="250" height="260" fill="#d8a35d"/>
+  <rect x="795" y="275" width="170" height="175" fill="#b97c3f"/>
+  <path d="M260 305h230M520 270h250M795 330h170" stroke="#6f4a24" stroke-width="12"/>
+  <text x="600" y="525" text-anchor="middle" font-family="Arial, sans-serif" font-size="42" fill="#2d2a26">tragarze.pl</text>
+</svg>

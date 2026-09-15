@@ -1,4 +1,4 @@
-import { readdir, readFile } from "node:fs/promises";
+import { access, readdir, readFile, realpath } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
@@ -7,23 +7,30 @@ const layerRules = [
   {
     layer: "core",
     directory: path.join(sourceRoot, "core"),
-    forbidden: ["@features/", "@theme/", "@project/"],
+    forbiddenLayers: new Set(["features", "theme", "project"]),
   },
   {
     layer: "features",
     directory: path.join(sourceRoot, "features"),
-    forbidden: ["@theme/", "@project/"],
+    forbiddenLayers: new Set(["theme", "project"]),
   },
   {
     layer: "theme",
     directory: path.join(sourceRoot, "theme"),
-    forbidden: ["@project/"],
+    forbiddenLayers: new Set(["project"]),
   },
 ];
 
 const checkedExtensions = new Set([".ts", ".tsx", ".astro", ".js", ".jsx", ".mjs"]);
+const resolvableExtensions = ["", ".ts", ".tsx", ".astro", ".js", ".jsx", ".mjs", ".json"];
 const importPattern =
   /(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?["']([^"']+)["']|import\(["']([^"']+)["']\)/g;
+const aliasRoots = new Map([
+  ["@core/", path.join(sourceRoot, "core")],
+  ["@features/", path.join(sourceRoot, "features")],
+  ["@theme/", path.join(sourceRoot, "theme")],
+  ["@project/", path.join(sourceRoot, "project")],
+]);
 
 async function listFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true });
@@ -41,6 +48,56 @@ async function listFiles(directory) {
   return files.flat();
 }
 
+async function pathExists(candidate) {
+  try {
+    await access(candidate);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveCandidate(basePath) {
+  for (const extension of resolvableExtensions) {
+    const fileCandidate = `${basePath}${extension}`;
+    if (await pathExists(fileCandidate)) {
+      return realpath(fileCandidate);
+    }
+  }
+
+  for (const extension of resolvableExtensions.filter(Boolean)) {
+    const indexCandidate = path.join(basePath, `index${extension}`);
+    if (await pathExists(indexCandidate)) {
+      return realpath(indexCandidate);
+    }
+  }
+
+  return null;
+}
+
+async function resolveImport(file, specifier) {
+  if (specifier.startsWith(".")) {
+    return resolveCandidate(path.resolve(path.dirname(file), specifier));
+  }
+
+  for (const [alias, directory] of aliasRoots) {
+    if (specifier.startsWith(alias)) {
+      return resolveCandidate(path.join(directory, specifier.slice(alias.length)));
+    }
+  }
+
+  return null;
+}
+
+function detectLayer(resolvedPath) {
+  const relative = path.relative(sourceRoot, resolvedPath);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    return null;
+  }
+
+  return relative.split(path.sep)[0];
+}
+
 const violations = [];
 
 for (const rule of layerRules) {
@@ -50,10 +107,15 @@ for (const rule of layerRules) {
     const source = await readFile(file, "utf8");
     for (const match of source.matchAll(importPattern)) {
       const specifier = match[1] ?? match[2];
-      const forbiddenAlias = rule.forbidden.find((alias) => specifier.startsWith(alias));
-      if (forbiddenAlias) {
+      const resolved = await resolveImport(file, specifier);
+      if (!resolved) {
+        continue;
+      }
+
+      const targetLayer = detectLayer(resolved);
+      if (targetLayer && rule.forbiddenLayers.has(targetLayer)) {
         violations.push(
-          `${path.relative(root, file)} imports ${specifier}; ${rule.layer} cannot depend on ${forbiddenAlias}`,
+          `${path.relative(root, file)} imports ${specifier}; ${rule.layer} cannot depend on ${targetLayer}`,
         );
       }
     }

@@ -5,4 +5,5 @@ export const projectConfig = {
   locale: "pl",
   siteUrl: "https://tragarze.pl",
   apiUrl: "https://api.tragarze.pl",
+  originsAreProvisional: true,
 } as const;

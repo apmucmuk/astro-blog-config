@@ -1,5 +1,5 @@
 export const navigation = [
-  { label: "Uslugi", href: "/uslugi/" },
+  { label: "Usługi", href: "/uslugi/" },
   { label: "Blog", href: "/blog/" },
-  { label: "Narzedzia", href: "/narzedzia/" },
+  { label: "Narzędzia", href: "/narzedzia/" },
 ] as const;

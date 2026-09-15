@@ -1,0 +1,13 @@
+{
+  "id": "jan-kowalski",
+  "name": "Jan Kowalski",
+  "slug": "jan-kowalski",
+  "locale": "pl",
+  "role": "author",
+  "rank": 50,
+  "headline": "Autor poradników tragarze.pl",
+  "bioShort": "Przygotowuje praktyczne materiały o organizacji przeprowadzek.",
+  "bio": "Jan Kowalski jest redakcyjną personą projektu tragarze.pl używaną do spójnego testowania modelu autorów i publikacji.",
+  "expertise": ["przeprowadzki", "organizacja-transportu"],
+  "links": []
+}

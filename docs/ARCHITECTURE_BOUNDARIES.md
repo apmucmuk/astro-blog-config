@@ -19,4 +19,4 @@ Forbidden imports:
 - `src/features/**` importing `@theme/*` or `@project/*`.
 - `src/theme/**` importing `@project/*`.
 
-The baseline architecture check is `pnpm check:architecture`.
+The baseline architecture check is `pnpm check:architecture`. It resolves local import specifiers to filesystem paths, so relative imports such as `../../project/...` are checked against the same layer rules as aliases.

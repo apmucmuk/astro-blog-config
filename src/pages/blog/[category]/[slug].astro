@@ -1,0 +1,61 @@
+---
+import { getCollection, render } from "astro:content";
+import { filterPublished } from "@core/content/lifecycle";
+import { articleCanonical } from "@core/seo/hreflang";
+import { projectConfig } from "@project/site.config";
+import categories from "../../../content/data/categories.json";
+
+export async function getStaticPaths() {
+  const articles = filterPublished(await getCollection("blog"));
+
+  return articles.map((article) => {
+    const category = categories.find((item) => item.id === article.data.category);
+    if (!category) {
+      throw new Error(`Unknown category '${article.data.category}' for article '${article.id}'.`);
+    }
+
+    return {
+      params: {
+        category: category.slug,
+        slug: article.data.slug,
+      },
+      props: {
+        article,
+        category,
+      },
+    };
+  });
+}
+
+const { article, category } = Astro.props;
+const { Content } = await render(article);
+const canonical = articleCanonical({
+  locale: article.data.locale,
+  categorySlug: category.slug,
+  articleSlug: article.data.slug,
+  siteUrl: projectConfig.siteUrl,
+});
+---
+
+<!doctype html>
+<html lang={article.data.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{article.data.seoTitle ?? article.data.title}</title>
+    <meta name="description" content={article.data.description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang={article.data.locale} href={canonical} />
+    <link rel="alternate" hreflang="x-default" href={canonical} />
+  </head>
+  <body>
+    <main>
+      <article>
+        <p>{category.name}</p>
+        <h1>{article.data.title}</h1>
+        <p>{article.data.description}</p>
+        <Content />
+      </article>
+    </main>
+  </body>
+</html>
