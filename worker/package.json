@@ -1,0 +1,6 @@
+{
+  "name": "@astro-blog-config/worker",
+  "private": true,
+  "type": "module",
+  "scripts": {}
+}
