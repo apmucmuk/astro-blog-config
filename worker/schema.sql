@@ -1,0 +1,1 @@
+-- Stage 5 will define D1 schema and versioned migrations.
