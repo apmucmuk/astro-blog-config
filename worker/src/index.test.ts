@@ -106,4 +106,23 @@ describe("worker runtime foundation", () => {
     expect(body.error.code).toBe("VALIDATION_ERROR");
   });
 
+  it("exposes a rating rate-limit rejection path with no-store", async () => {
+    const response = await worker.fetch(
+      new Request("https://api.tragarze.pl/v1/articles/art-tragarze-001/rating", {
+        method: "POST",
+        headers: {
+          Origin: "https://tragarze.pl",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ value: 5 }),
+      }),
+      { ...env, RATE_LIMIT_RATINGS: "0" },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(body.error.code).toBe("RATE_LIMITED");
+  });
+
 });

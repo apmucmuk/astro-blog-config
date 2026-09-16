@@ -40,6 +40,12 @@ function articleRatingMatch(pathname: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function enforceRatingRateLimitPath(env: Env): void {
+  if (env.RATE_LIMIT_RATINGS === "0") {
+    throw new ApiError(429, "RATE_LIMITED", "Rating rate limit exceeded.");
+  }
+}
+
 async function readStrictJson(request: Request): Promise<unknown> {
   const contentType = request.headers.get("Content-Type") ?? "";
   if (!contentType.toLowerCase().startsWith("application/json")) {
@@ -83,6 +89,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     }
 
     if (request.method === "POST") {
+      enforceRatingRateLimitPath(env);
       const visitor = getOrCreateVisitorIdentity(request, env);
       const body = parseRatingRequest(await readStrictJson(request));
       const response = mutationJsonResponse(

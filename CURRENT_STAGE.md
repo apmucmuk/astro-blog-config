@@ -7,14 +7,34 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 5 - Worker + D1 foundation.
+Stage 6 - Rating.
 
 ## Status
 `complete`
 
-Stage 5 implementation has been verified locally in the repository branch `codex/stage-5-worker-d1-foundation`.
+Stage 6 implementation has been verified locally in the repository branch `codex/stage-6-rating`.
 
 ## Verified checks
+### Stage 6
+- 2026-09-16 12:28 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current.
+- 2026-09-16 12:28 +02:00 - `pnpm worker:validate` - PASS. Stage 5 Worker/D1 foundation validation remains valid.
+- 2026-09-16 12:28 +02:00 - `pnpm test` - PASS. Vitest reported 6 test files passed and 28 tests passed, including first vote, vote update, same-value repeat, two visitors, rating_sum/rating_count correctness, rating 1/5 boundaries, invalid ratings, malformed payload, disabled/missing article, Origin/CORS, no-store, rate-limit path and atomic failure no-desync behavior.
+- 2026-09-16 12:28 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
+- 2026-09-16 12:28 +02:00 - `pnpm build` - PASS. Production static build still generated accepted Stage 1-5 outputs; rating API failure does not break static article rendering.
+- 2026-09-16 12:28 +02:00 - `pnpm seo:validate` - PASS. Stage 1-3 SEO/content behavior regression remained valid; no fake rating/AggregateRating was introduced for zero-count runtime ratings.
+- 2026-09-16 12:28 +02:00 - `pnpm theme:validate` - PASS. Stage 4 static/theme browser regression remained valid.
+- 2026-09-16 12:28 +02:00 - Cloudflare deployed Worker/D1 rating verification - BLOCKED by external authorization. No production Cloudflare account ID, D1 ID, tokens or secrets were requested or committed.
+
+### Stage 6 implementation notes
+- Added shared `RatingRequest` and `RatingResponse` DTOs plus strict integer range validation.
+- Implemented `GET /v1/articles/{articleId}/rating` returning private/no-store personalized rating data with `ratingValue`, `ratingCount` and `myRating`.
+- Implemented `POST /v1/articles/{articleId}/rating` with strict JSON body validation, exact-Origin mutation protection, first-party anonymous visitor cookie creation/validation and no-store mutation responses/errors.
+- Added `worker/src/rating.ts` for first vote, vote update, same-value idempotence, public `ratingValue = rating_sum / rating_count` only when `rating_count > 0`, and no public `ratingScore`.
+- Rating mutations validate `content_articles`/runtime-enabled article scope before vote writes and maintain `article_rating_votes` plus `article_stats.rating_sum/rating_count` in one D1 batch path.
+- Added opaque HttpOnly/Secure/SameSite=Lax/Path=/ visitor cookie handling in `worker/src/visitor.ts`; raw IP/fingerprinting/user account identity is not used.
+- Added configurable rating rate-limit rejection path via `RATE_LIMIT_RATINGS=0` for the Stage 6 abuse/rate-limit gate without introducing new storage or future-stage behavior.
+- Did not implement Stage 7 comments, Stage 8 reads/stats snapshot ranking, admin, or additional migrations.
+
 ### Stage 5
 - 2026-09-16 07:08 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current.
 - 2026-09-16 07:08 +02:00 - `pnpm worker:validate` - PASS. Runtime registry generated 1 published article; versioned D1 migration, canonical tables/indexes, Wrangler local D1 binding, preview/local separation, env names and secret scan passed.
@@ -103,22 +123,25 @@ Stage 5 implementation has been verified locally in the repository branch `codex
 
 Note: `ASTRO_TELEMETRY_DISABLED=1` was required in this sandbox because Astro telemetry attempted to create `C:\Users\sunpl\AppData\Roaming\astro\Config`, which is outside the writable workspace. This was an environment permission issue, not a project type/build failure.
 
-## Required Stage 5 checks
+## Required Stage 6 checks
 The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks include:
-- `/health` 200 with no secrets or database dump;
-- local/preview D1 separation in Worker configuration;
-- versioned migrations reproducible from Git;
-- canonical D1 tables match SPEC section 85;
-- `content_articles` registry exists and is generated from validated content;
-- lazy `article_stats` initialization is tested;
-- committed files contain no real secrets;
-- API error shape matches SPEC section 83;
-- mutation and mutation-error responses use `Cache-Control: no-store`;
-- shared DTO/runtime schema source exists for external inputs;
-- Stage 1-4 regression checks continue to pass.
+- personalized `GET /v1/articles/{articleId}/rating` returns returning visitor `myRating`;
+- first vote insert;
+- vote update;
+- same-value repeat does not distort aggregates;
+- one active vote per `site_id + article_id + visitor_id`;
+- aggregate `rating_sum` and `rating_count` correctness;
+- invalid rating rejected;
+- malformed payload rejected;
+- disabled/missing article rejected before vote mutation;
+- mutation Origin/CORS behavior preserved;
+- mutation responses and mutation errors are `no-store`;
+- visitor cookie flags and malformed identity behavior verified;
+- rate-limit rejection path exists;
+- static article/SEO/theme regressions continue to pass.
 
 ## Blockers
-Local Stage 5 foundation is complete. Production/preview Cloudflare apply remains BLOCKED until the user provides real Cloudflare authorization/configuration outside the repository:
+Local Stage 6 rating implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED until the user provides real Cloudflare authorization/configuration outside the repository:
 - Cloudflare account permission to create/manage Workers and D1;
 - real preview and production D1 database IDs/names;
 - Worker deployment target for `tragarze-api`;

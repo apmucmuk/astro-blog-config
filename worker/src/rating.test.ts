@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseRatingRequest } from "./rating";
-import { submitRating } from "./rating";
+import { getRating, parseRatingRequest, submitRating } from "./rating";
 import type { D1Database, D1PreparedStatement, D1Result } from "./types";
 
 type ArticleRow = {
@@ -213,6 +212,32 @@ describe("rating service", () => {
     expect(response).toEqual({ ratingValue: 3, ratingCount: 2, myRating: 5 });
     expect(db.stats.get("tragarze-pl:art-tragarze-001")?.rating_sum).toBe(6);
     expect(db.stats.get("tragarze-pl:art-tragarze-001")?.rating_count).toBe(2);
+  });
+
+  it("returns personalized myRating for returning visitors and null otherwise", async () => {
+    const db = new RatingDb();
+    await submitRating(db, "tragarze-pl", "art-tragarze-001", "visitor-a", 5, 10);
+
+    await expect(getRating(db, "tragarze-pl", "art-tragarze-001", "visitor-a")).resolves.toEqual({
+      ratingValue: 5,
+      ratingCount: 1,
+      myRating: 5,
+    });
+    await expect(getRating(db, "tragarze-pl", "art-tragarze-001", null)).resolves.toEqual({
+      ratingValue: 5,
+      ratingCount: 1,
+      myRating: null,
+    });
+  });
+
+  it("does not expose a fake rating value when rating_count is zero", async () => {
+    const db = new RatingDb();
+
+    await expect(getRating(db, "tragarze-pl", "art-tragarze-001", null)).resolves.toEqual({
+      ratingValue: null,
+      ratingCount: 0,
+      myRating: null,
+    });
   });
 
   it("rejects ratings below 1, above 5, malformed payloads and unknown fields", () => {
