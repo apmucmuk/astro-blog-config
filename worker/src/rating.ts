@@ -62,69 +62,35 @@ export async function submitRating(
   value: number,
   nowMs = Date.now(),
 ): Promise<RatingResponse> {
-  const stats = await ensureArticleStats(db, siteId, articleId, nowMs);
-  const existing = await db
-    .prepare(
-      `SELECT value
-       FROM article_rating_votes
-       WHERE site_id = ? AND article_id = ? AND visitor_id = ?`,
-    )
-    .bind(siteId, articleId, visitorId)
-    .first<RatingVoteRow>();
+  await ensureArticleStats(db, siteId, articleId, nowMs);
 
-  if (existing?.value === value) {
-    return toRatingResponse(stats, value);
-  }
+  try {
+    const result = await db
+      .prepare(
+        `INSERT INTO article_rating_votes (
+          site_id,
+          article_id,
+          visitor_id,
+          value,
+          created_at_ms,
+          updated_at_ms
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(site_id, article_id, visitor_id) DO UPDATE SET
+          value = excluded.value,
+          updated_at_ms = excluded.updated_at_ms
+        WHERE article_rating_votes.value <> excluded.value`,
+      )
+      .bind(siteId, articleId, visitorId, value, nowMs, nowMs)
+      .run();
 
-  if (!db.batch) {
-    throw new ApiError(500, "INTERNAL_ERROR", "Atomic D1 batch is required for rating mutations.");
-  }
-
-  const statements = existing
-    ? [
-        db
-          .prepare(
-            `UPDATE article_rating_votes
-             SET value = ?, updated_at_ms = ?
-             WHERE site_id = ? AND article_id = ? AND visitor_id = ?`,
-          )
-          .bind(value, nowMs, siteId, articleId, visitorId),
-        db
-          .prepare(
-            `UPDATE article_stats
-             SET rating_sum = rating_sum - ? + ?, updated_at_ms = ?
-             WHERE site_id = ? AND article_id = ?`,
-          )
-          .bind(existing.value, value, nowMs, siteId, articleId),
-      ]
-    : [
-        db
-          .prepare(
-            `INSERT INTO article_rating_votes (
-              site_id,
-              article_id,
-              visitor_id,
-              value,
-              created_at_ms,
-              updated_at_ms
-            )
-            VALUES (?, ?, ?, ?, ?, ?)`,
-          )
-          .bind(siteId, articleId, visitorId, value, nowMs, nowMs),
-        db
-          .prepare(
-            `UPDATE article_stats
-             SET rating_sum = rating_sum + ?, rating_count = rating_count + 1, updated_at_ms = ?
-             WHERE site_id = ? AND article_id = ?`,
-          )
-          .bind(value, nowMs, siteId, articleId),
-      ];
-
-  const results = await db.batch(statements);
-  if (results.some((result) => !result.success)) {
+    if (result.success) {
+      const updatedStats = await ensureArticleStats(db, siteId, articleId, nowMs);
+      return toRatingResponse(updatedStats, value);
+    }
+  } catch {
     throw new ApiError(500, "INTERNAL_ERROR", "Rating mutation failed.");
   }
 
-  const updatedStats = await ensureArticleStats(db, siteId, articleId, nowMs);
-  return toRatingResponse(updatedStats, value);
+  throw new ApiError(500, "INTERNAL_ERROR", "Rating mutation failed.");
 }

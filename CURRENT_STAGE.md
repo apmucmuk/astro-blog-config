@@ -16,21 +16,21 @@ Stage 6 implementation has been verified locally in the repository branch `codex
 
 ## Verified checks
 ### Stage 6
-- 2026-09-16 12:28 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current.
-- 2026-09-16 12:28 +02:00 - `pnpm worker:validate` - PASS. Stage 5 Worker/D1 foundation validation remains valid.
-- 2026-09-16 12:28 +02:00 - `pnpm test` - PASS. Vitest reported 6 test files passed and 28 tests passed, including first vote, vote update, same-value repeat, two visitors, rating_sum/rating_count correctness, rating 1/5 boundaries, invalid ratings, malformed payload, disabled/missing article, Origin/CORS, no-store, rate-limit path and atomic failure no-desync behavior.
-- 2026-09-16 12:28 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
-- 2026-09-16 12:28 +02:00 - `pnpm build` - PASS. Production static build still generated accepted Stage 1-5 outputs; rating API failure does not break static article rendering.
-- 2026-09-16 12:28 +02:00 - `pnpm seo:validate` - PASS. Stage 1-3 SEO/content behavior regression remained valid; no fake rating/AggregateRating was introduced for zero-count runtime ratings.
-- 2026-09-16 12:28 +02:00 - `pnpm theme:validate` - PASS. Stage 4 static/theme browser regression remained valid.
-- 2026-09-16 12:28 +02:00 - Cloudflare deployed Worker/D1 rating verification - BLOCKED by external authorization. No production Cloudflare account ID, D1 ID, tokens or secrets were requested or committed.
+- 2026-09-16 23:03 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current. pnpm printed a non-fatal update metadata network warning but exited 0.
+- 2026-09-16 23:03 +02:00 - `pnpm worker:validate` - PASS. Stage 5 Worker/D1 foundation validation remains valid and now also verifies the Stage 6 rating aggregate trigger migration.
+- 2026-09-16 23:02 +02:00 - `pnpm test` - PASS. Vitest reported 6 test files passed and 30 tests passed, including first vote, vote update, same-value repeat, two visitors, concurrent update race, concurrent first-vote race, rating_sum/rating_count correctness, rating 1/5 boundaries, invalid ratings, malformed payload, disabled/missing article, Origin/CORS, no-store, rate-limit path and upsert failure no-desync behavior.
+- 2026-09-16 23:03 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
+- 2026-09-16 23:03 +02:00 - `pnpm build` - PASS. Production static build still generated accepted Stage 1-5 outputs; rating API failure does not break static article rendering.
+- 2026-09-16 23:03 +02:00 - `pnpm seo:validate` - PASS. Stage 1-3 SEO/content behavior regression remained valid; no fake rating/AggregateRating was introduced for zero-count runtime ratings.
+- 2026-09-16 23:03 +02:00 - `pnpm theme:validate` - PASS. Stage 4 static/theme browser regression remained valid.
+- 2026-09-16 23:03 +02:00 - Cloudflare deployed Worker/D1 rating verification - BLOCKED by external authorization. No production Cloudflare account ID, D1 ID, tokens or secrets were requested or committed.
 
 ### Stage 6 implementation notes
 - Added shared `RatingRequest` and `RatingResponse` DTOs plus strict integer range validation.
 - Implemented `GET /v1/articles/{articleId}/rating` returning private/no-store personalized rating data with `ratingValue`, `ratingCount` and `myRating`.
 - Implemented `POST /v1/articles/{articleId}/rating` with strict JSON body validation, exact-Origin mutation protection, first-party anonymous visitor cookie creation/validation and no-store mutation responses/errors.
 - Added `worker/src/rating.ts` for first vote, vote update, same-value idempotence, public `ratingValue = rating_sum / rating_count` only when `rating_count > 0`, and no public `ratingScore`.
-- Rating mutations validate `content_articles`/runtime-enabled article scope before vote writes and maintain `article_rating_votes` plus `article_stats.rating_sum/rating_count` in one D1 batch path.
+- Rating mutations validate `content_articles`/runtime-enabled article scope before vote writes. `article_rating_votes` is mutated through one D1 UPSERT and `article_stats.rating_sum/rating_count` is maintained by versioned D1 triggers in `worker/migrations/0002_rating_aggregate_triggers.sql`, avoiding stale read-before-write deltas under concurrent requests.
 - Added opaque HttpOnly/Secure/SameSite=Lax/Path=/ visitor cookie handling in `worker/src/visitor.ts`; raw IP/fingerprinting/user account identity is not used.
 - Added configurable rating rate-limit rejection path via `RATE_LIMIT_RATINGS=0` for the Stage 6 abuse/rate-limit gate without introducing new storage or future-stage behavior.
 - Did not implement Stage 7 comments, Stage 8 reads/stats snapshot ranking, admin, or additional migrations.

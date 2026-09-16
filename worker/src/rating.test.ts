@@ -61,7 +61,7 @@ class RatingDb implements D1Database {
   readonly articles = new Map<string, ArticleRow>();
   readonly stats = new Map<string, StatsRow>();
   readonly votes = new Map<string, VoteRow>();
-  failNextBatch = false;
+  failNextRatingUpsert = false;
 
   constructor() {
     this.articles.set("tragarze-pl:art-tragarze-001", {
@@ -85,11 +85,6 @@ class RatingDb implements D1Database {
   }
 
   async batch(statements: D1PreparedStatement[]): Promise<D1Result[]> {
-    if (this.failNextBatch) {
-      this.failNextBatch = false;
-      return statements.map(() => ({ success: false, meta: {} }));
-    }
-
     return Promise.all(statements.map((statement) => statement.run()));
   }
 
@@ -125,10 +120,28 @@ class RatingDb implements D1Database {
     }
 
     if (query.includes("INSERT INTO article_rating_votes")) {
-      const key = `${values[0]}:${values[1]}:${values[2]}`;
-      if (this.votes.has(key)) {
-        throw new Error("UNIQUE constraint failed");
+      if (this.failNextRatingUpsert) {
+        this.failNextRatingUpsert = false;
+        throw new Error("Injected rating upsert failure");
       }
+
+      const key = `${values[0]}:${values[1]}:${values[2]}`;
+      const stats = this.stats.get(`${values[0]}:${values[1]}`);
+      const existing = this.votes.get(key);
+      if (existing) {
+        const oldValue = existing.value;
+        const newValue = values[3] as number;
+        if (oldValue !== newValue) {
+          existing.value = newValue;
+          existing.updated_at_ms = values[5] as number;
+          if (stats) {
+            stats.rating_sum = stats.rating_sum - oldValue + newValue;
+            stats.updated_at_ms = values[5] as number;
+          }
+        }
+        return;
+      }
+
       this.votes.set(key, {
         site_id: values[0] as string,
         article_id: values[1] as string,
@@ -137,15 +150,10 @@ class RatingDb implements D1Database {
         created_at_ms: values[4] as number,
         updated_at_ms: values[5] as number,
       });
-      return;
-    }
-
-    if (query.includes("UPDATE article_rating_votes")) {
-      const key = `${values[2]}:${values[3]}:${values[4]}`;
-      const vote = this.votes.get(key);
-      if (vote) {
-        vote.value = values[0] as number;
-        vote.updated_at_ms = values[1] as number;
+      if (stats) {
+        stats.rating_sum += values[3] as number;
+        stats.rating_count += 1;
+        stats.updated_at_ms = values[5] as number;
       }
       return;
     }
@@ -214,6 +222,39 @@ describe("rating service", () => {
     expect(db.stats.get("tragarze-pl:art-tragarze-001")?.rating_count).toBe(2);
   });
 
+  it("keeps aggregate aligned during concurrent updates of one existing vote", async () => {
+    const db = new RatingDb();
+    await submitRating(db, "tragarze-pl", "art-tragarze-001", "visitor-a", 3, 10);
+
+    await Promise.all([
+      submitRating(db, "tragarze-pl", "art-tragarze-001", "visitor-a", 4, 20),
+      submitRating(db, "tragarze-pl", "art-tragarze-001", "visitor-a", 5, 30),
+    ]);
+
+    const storedVote = db.votes.get("tragarze-pl:art-tragarze-001:visitor-a");
+    const stats = db.stats.get("tragarze-pl:art-tragarze-001");
+    expect(db.votes.size).toBe(1);
+    expect(stats?.rating_count).toBe(1);
+    expect(stats?.rating_sum).toBe(storedVote?.value);
+    expect([4, 5]).toContain(storedVote?.value);
+  });
+
+  it("keeps one active vote and matching aggregate during concurrent first votes", async () => {
+    const db = new RatingDb();
+
+    await Promise.all([
+      submitRating(db, "tragarze-pl", "art-tragarze-001", "visitor-a", 4, 20),
+      submitRating(db, "tragarze-pl", "art-tragarze-001", "visitor-a", 5, 30),
+    ]);
+
+    const storedVote = db.votes.get("tragarze-pl:art-tragarze-001:visitor-a");
+    const stats = db.stats.get("tragarze-pl:art-tragarze-001");
+    expect(db.votes.size).toBe(1);
+    expect(stats?.rating_count).toBe(1);
+    expect(stats?.rating_sum).toBe(storedVote?.value);
+    expect([4, 5]).toContain(storedVote?.value);
+  });
+
   it("returns personalized myRating for returning visitors and null otherwise", async () => {
     const db = new RatingDb();
     await submitRating(db, "tragarze-pl", "art-tragarze-001", "visitor-a", 5, 10);
@@ -261,9 +302,9 @@ describe("rating service", () => {
     expect(db.stats.size).toBe(0);
   });
 
-  it("does not desynchronize vote and aggregate when atomic batch fails", async () => {
+  it("does not desynchronize vote and aggregate when rating upsert fails", async () => {
     const db = new RatingDb();
-    db.failNextBatch = true;
+    db.failNextRatingUpsert = true;
 
     await expect(submitRating(db, "tragarze-pl", "art-tragarze-001", "visitor-a", 5, 10)).rejects.toMatchObject({
       status: 500,

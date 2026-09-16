@@ -16,8 +16,10 @@ function assert(condition, message) {
 const migrationDir = path.join(root, "worker/migrations");
 const migrations = (await readdir(migrationDir)).filter((file) => file.endsWith(".sql")).sort();
 assert(migrations.includes("0001_runtime_foundation.sql"), "Stage 5 baseline migration is missing.");
+assert(migrations.includes("0002_rating_aggregate_triggers.sql"), "Stage 6 rating aggregate trigger migration is missing.");
 
 const migration = await read("worker/migrations/0001_runtime_foundation.sql");
+const ratingMigration = await read("worker/migrations/0002_rating_aggregate_triggers.sql");
 const requiredTables = [
   "content_articles",
   "article_stats",
@@ -43,6 +45,17 @@ assert(migration.includes("PRIMARY KEY (site_id, article_id)"), "content/article
 assert(migration.includes("ON comments"), "comments indexes must target comments table.");
 assert(migration.includes("CHECK (runtime_enabled IN (0, 1))"), "content_articles runtime_enabled check is missing.");
 assert(migration.includes("CHECK (value >= 1 AND value <= 5)"), "rating vote value check is missing.");
+assert(
+  ratingMigration.includes("trg_article_rating_votes_after_insert") &&
+    ratingMigration.includes("rating_sum = rating_sum + NEW.value") &&
+    ratingMigration.includes("rating_count = rating_count + 1"),
+  "rating insert trigger must maintain rating_sum/rating_count.",
+);
+assert(
+  ratingMigration.includes("trg_article_rating_votes_after_value_update") &&
+    ratingMigration.includes("rating_sum = rating_sum - OLD.value + NEW.value"),
+  "rating update trigger must maintain rating_sum from OLD/NEW values.",
+);
 
 const wrangler = await read("worker/wrangler.jsonc");
 assert(wrangler.includes('"binding": "DB"'), "Wrangler D1 binding DB is missing.");
