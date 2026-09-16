@@ -7,14 +7,33 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 3 - SEO shell.
+Stage 4 - Theme + performance baseline.
 
 ## Status
 `complete`
 
-Stage 3 implementation has been verified locally in the repository branch `codex/stage-3-seo-shell`.
+Stage 4 implementation has been verified locally in the repository branch `codex/stage-4-theme-performance`.
 
 ## Verified checks
+### Stage 4
+- 2026-09-16 06:50 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current after adding exact `playwright-core` dev dependency.
+- 2026-09-16 06:50 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
+- 2026-09-16 06:50 +02:00 - `pnpm test` - PASS. Vitest reported 3 test files passed and 10 tests passed.
+- 2026-09-16 06:51 +02:00 - `pnpm build` - PASS. Production static build generated article, editorial/person pages, `404.html`, `redirects.json`, `robots.txt`, `rss.xml`, `sitemap.xml` and homepage.
+- 2026-09-16 06:51 +02:00 - `pnpm seo:validate` - PASS. Stage 1-3 SEO/content behavior regression remained valid in the production build.
+- 2026-09-16 06:51 +02:00 - `pnpm theme:validate` - PASS. Production-build HTML/static inspection and real Chrome browser validation passed for Stage 4 theme gates.
+
+### Stage 4 implementation notes
+- Added static-first theme primitives in `src/theme/styles/tokens.css`, `src/theme/styles/global.css` and `src/theme/layouts/BaseLayout.astro`.
+- Implemented mobile-first typography, layout, header/navigation, skip link, visible focus states, article presentation, editorial/person presentation and reusable card/list primitives.
+- Added light/dark color schemes using system preference defaults.
+- Preserved `CORE -> FEATURES -> THEME -> PROJECT` boundaries by keeping project navigation/config outside THEME and passing them into `BaseLayout` as props.
+- Kept Stage 4 free of global React/client hydration; production HTML validation confirms no hydrated Astro islands.
+- Reserved article hero dimensions and marked the representative LCP image eager/high priority while preserving lazy behavior requirements for non-LCP images.
+- Added `scripts/validate-theme-build.mjs` and `scripts/validate-theme-browser.mjs`, exposed through `pnpm theme:validate`.
+- During validation, the initial low-level Chrome DevTools Protocol transport timed out at `Runtime.enable`; the browser gate was replaced with `playwright-core` using the installed system Chrome while keeping the same Stage 4 assertions. A too-literal computed `68ch` browser assertion was corrected by moving source-level readable-measure validation into the static CSS check and retaining real viewport overflow/readability checks in Chrome.
+- Did not start Stage 5 Worker/D1 work.
+
 ### Stage 3
 - 2026-09-15 19:01 +02:00 - `pnpm test` - PASS. Vitest reported 3 test files passed and 10 tests passed.
 - 2026-09-15 19:01 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
@@ -64,22 +83,20 @@ Stage 3 implementation has been verified locally in the repository branch `codex
 
 Note: `ASTRO_TELEMETRY_DISABLED=1` was required in this sandbox because Astro telemetry attempted to create `C:\Users\sunpl\AppData\Roaming\astro\Config`, which is outside the writable workspace. This was an environment permission issue, not a project type/build failure.
 
-## Required Stage 3 checks
+## Required Stage 4 checks
 The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks include:
-- title/description;
-- canonical;
-- hreflang;
-- robots behavior;
-- sitemap;
-- RSS;
-- breadcrumbs;
-- BlogPosting;
-- Person/Profile where applicable;
-- 404 real route/template behavior;
-- redirect manifest.
+- representative production-build HTML inspection;
+- readable article with JavaScript disabled;
+- no horizontal overflow at required widths, including 320 px and iPhone 13 mini width;
+- reserved hero dimensions;
+- LCP image not lazy and using high fetch priority;
+- minimal font/theme baseline with readable article measure;
+- no unnecessary client hydration/global React;
+- visible keyboard focus;
+- skip link behavior.
 
 ## Blockers
-None for Stage 3. Existing open questions do not block SEO shell work.
+None for Stage 4. Existing open questions do not block the static theme/performance baseline.
 
 ## Update rules
 After work on a stage, record:
