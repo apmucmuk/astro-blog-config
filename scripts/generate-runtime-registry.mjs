@@ -37,9 +37,9 @@ function isProductionPublic(data, now) {
 }
 
 const now = Date.now();
-const updatedAtMs = now;
 const files = await listMdxFiles(contentDir);
 const articles = [];
+let latestPublishAtMs = 0;
 
 for (const file of files) {
   const source = await readFile(file, "utf8");
@@ -54,18 +54,25 @@ for (const file of files) {
     continue;
   }
 
+  latestPublishAtMs = Math.max(latestPublishAtMs, publishAtMs);
   articles.push({
     siteId,
     articleId: data.id,
     publishAtMs,
     runtimeEnabled: true,
-    updatedAtMs,
   });
 }
 
-articles.sort((left, right) => left.siteId.localeCompare(right.siteId) || left.articleId.localeCompare(right.articleId));
+const updatedAtMs = Number.parseInt(process.env.REGISTRY_UPDATED_AT_MS ?? `${latestPublishAtMs}`, 10);
+if (!Number.isSafeInteger(updatedAtMs) || updatedAtMs < 0) {
+  throw new Error("REGISTRY_UPDATED_AT_MS must be a non-negative integer when provided.");
+}
+
+const registryArticles = articles
+  .map((article) => ({ ...article, updatedAtMs }))
+  .sort((left, right) => left.siteId.localeCompare(right.siteId) || left.articleId.localeCompare(right.articleId));
 
 await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify({ generatedAtMs: updatedAtMs, articles }, null, 2)}\n`);
+await writeFile(outputPath, `${JSON.stringify({ generatedAtMs: updatedAtMs, articles: registryArticles }, null, 2)}\n`);
 
-console.log(`Runtime registry generated: ${articles.length} article(s).`);
+console.log(`Runtime registry generated: ${registryArticles.length} article(s).`);

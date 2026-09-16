@@ -31,16 +31,7 @@
         "POPULARITY_WINDOW_DAYS": "7",
         "VISITOR_COOKIE_NAME": "tragarze_vid",
         "LOG_LEVEL": "info"
-      },
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "tragarze-runtime-preview",
-          "database_id": "preview-configured-in-cloudflare",
-          "preview_database_id": "local-preview",
-          "migrations_dir": "migrations"
-        }
-      ]
+      }
     },
     "production": {
       "vars": {
@@ -50,16 +41,7 @@
         "POPULARITY_WINDOW_DAYS": "7",
         "VISITOR_COOKIE_NAME": "tragarze_vid",
         "LOG_LEVEL": "info"
-      },
-      "d1_databases": [
-        {
-          "binding": "DB",
-          "database_name": "tragarze-runtime-production",
-          "database_id": "production-configured-in-cloudflare",
-          "preview_database_id": "local-preview",
-          "migrations_dir": "migrations"
-        }
-      ]
+      }
     }
   }
 }

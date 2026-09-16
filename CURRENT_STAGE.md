@@ -7,14 +7,34 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 4 - Theme + performance baseline.
+Stage 5 - Worker + D1 foundation.
 
 ## Status
 `complete`
 
-Stage 4 implementation has been verified locally in the repository branch `codex/stage-4-theme-performance`.
+Stage 5 implementation has been verified locally in the repository branch `codex/stage-5-worker-d1-foundation`.
 
 ## Verified checks
+### Stage 5
+- 2026-09-16 07:08 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current.
+- 2026-09-16 07:08 +02:00 - `pnpm worker:validate` - PASS. Runtime registry generated 1 published article; versioned D1 migration, canonical tables/indexes, Wrangler local D1 binding, preview/local separation, env names and secret scan passed.
+- 2026-09-16 07:08 +02:00 - `pnpm test` - PASS. Vitest reported 5 test files passed and 17 tests passed, including Worker `/health`, credentialed exact-Origin CORS, mutation `no-store` error responses and lazy `article_stats` initialization.
+- 2026-09-16 07:08 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
+- 2026-09-16 07:08 +02:00 - `pnpm build` - PASS. Production static build still generated accepted Stage 1-4 outputs.
+- 2026-09-16 07:08 +02:00 - `pnpm seo:validate` - PASS. Stage 1-3 SEO/content behavior regression remained valid.
+- 2026-09-16 07:08 +02:00 - `pnpm theme:validate` - PASS. Stage 4 static/theme browser regression remained valid.
+- 2026-09-16 07:08 +02:00 - Cloudflare production D1 creation/migration apply - BLOCKED by external authorization. No production Cloudflare account ID, production D1 database ID or secrets were requested or committed.
+
+### Stage 5 implementation notes
+- Added canonical versioned D1 migration `worker/migrations/0001_runtime_foundation.sql` for `content_articles`, `article_stats`, `article_read_daily`, `comments` and `article_rating_votes`, including canonical starter indexes from SPEC section 85.
+- Added Worker runtime shell in `worker/src`: `/health`, `/v1/stats` foundation response, shared error response shape, exact-Origin credentialed CORS primitives, mutation Origin rejection and `no-store` mutation/error response handling.
+- Added shared CORE API DTO/error/runtime validation primitives in `src/core/api` so Worker handlers do not maintain a divergent copy of shared contracts.
+- Added D1 registry/stat helpers with prepared statements and idempotent lazy `article_stats` initialization after `content_articles` runtime-enabled validation.
+- Added explicit runtime registry generation via `scripts/generate-runtime-registry.mjs` and committed `worker/registry/content-articles.json`; draft and scheduled content are excluded from runtime-enabled registry rows.
+- Added `scripts/validate-worker-foundation.mjs` and package scripts `worker:registry` / `worker:validate`.
+- Configured local Worker/D1 baseline in `worker/wrangler.jsonc` with `DB` binding, local development database identity, local preview separation, project/env vars and no production secrets.
+- Did not implement Stage 6 rating behavior, Stage 7 comments behavior, Stage 8 read-count mutation behavior or admin features. Future-stage tables exist only because the canonical Stage 5 D1 model requires the shared foundation.
+
 ### Stage 4
 - 2026-09-16 06:50 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current after adding exact `playwright-core` dev dependency.
 - 2026-09-16 06:50 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
@@ -83,20 +103,27 @@ Stage 4 implementation has been verified locally in the repository branch `codex
 
 Note: `ASTRO_TELEMETRY_DISABLED=1` was required in this sandbox because Astro telemetry attempted to create `C:\Users\sunpl\AppData\Roaming\astro\Config`, which is outside the writable workspace. This was an environment permission issue, not a project type/build failure.
 
-## Required Stage 4 checks
+## Required Stage 5 checks
 The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks include:
-- representative production-build HTML inspection;
-- readable article with JavaScript disabled;
-- no horizontal overflow at required widths, including 320 px and iPhone 13 mini width;
-- reserved hero dimensions;
-- LCP image not lazy and using high fetch priority;
-- minimal font/theme baseline with readable article measure;
-- no unnecessary client hydration/global React;
-- visible keyboard focus;
-- skip link behavior.
+- `/health` 200 with no secrets or database dump;
+- local/preview D1 separation in Worker configuration;
+- versioned migrations reproducible from Git;
+- canonical D1 tables match SPEC section 85;
+- `content_articles` registry exists and is generated from validated content;
+- lazy `article_stats` initialization is tested;
+- committed files contain no real secrets;
+- API error shape matches SPEC section 83;
+- mutation and mutation-error responses use `Cache-Control: no-store`;
+- shared DTO/runtime schema source exists for external inputs;
+- Stage 1-4 regression checks continue to pass.
 
 ## Blockers
-None for Stage 4. Existing open questions do not block the static theme/performance baseline.
+Local Stage 5 foundation is complete. Production/preview Cloudflare apply remains BLOCKED until the user provides real Cloudflare authorization/configuration outside the repository:
+- Cloudflare account permission to create/manage Workers and D1;
+- real preview and production D1 database IDs/names;
+- Worker deployment target for `tragarze-api`;
+- production/preview secrets configured in Cloudflare secret storage, especially `TURNSTILE_SECRET_KEY` when later stages require it;
+- exact confirmed production origins/domains if Q001 changes the provisional `https://tragarze.pl` / `https://api.tragarze.pl` defaults.
 
 ## Update rules
 After work on a stage, record:
