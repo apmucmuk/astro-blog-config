@@ -2,5 +2,64 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tragarze-api",
   "main": "src/index.ts",
-  "compatibility_date": "2026-09-15"
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "send_metrics": false,
+  "vars": {
+    "APP_ENV": "development",
+    "SITE_ID": "tragarze-pl",
+    "ALLOWED_ORIGIN": "https://tragarze.pl",
+    "POPULARITY_WINDOW_DAYS": "7",
+    "VISITOR_COOKIE_NAME": "tragarze_vid",
+    "LOG_LEVEL": "info"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tragarze-runtime-local",
+      "database_id": "local-development",
+      "preview_database_id": "local-preview",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "env": {
+    "preview": {
+      "vars": {
+        "APP_ENV": "preview",
+        "SITE_ID": "tragarze-pl",
+        "ALLOWED_ORIGIN": "https://tragarze.pl",
+        "POPULARITY_WINDOW_DAYS": "7",
+        "VISITOR_COOKIE_NAME": "tragarze_vid",
+        "LOG_LEVEL": "info"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "tragarze-runtime-preview",
+          "database_id": "preview-configured-in-cloudflare",
+          "preview_database_id": "local-preview",
+          "migrations_dir": "migrations"
+        }
+      ]
+    },
+    "production": {
+      "vars": {
+        "APP_ENV": "production",
+        "SITE_ID": "tragarze-pl",
+        "ALLOWED_ORIGIN": "https://tragarze.pl",
+        "POPULARITY_WINDOW_DAYS": "7",
+        "VISITOR_COOKIE_NAME": "tragarze_vid",
+        "LOG_LEVEL": "info"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "tragarze-runtime-production",
+          "database_id": "production-configured-in-cloudflare",
+          "preview_database_id": "local-preview",
+          "migrations_dir": "migrations"
+        }
+      ]
+    }
+  }
 }

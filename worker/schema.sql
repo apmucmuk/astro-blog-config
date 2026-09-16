@@ -1,1 +1,3 @@
--- Stage 5 will define D1 schema and versioned migrations.
+-- Canonical D1 schema is versioned in ./migrations.
+-- Apply migrations in lexical order. Current baseline:
+--   migrations/0001_runtime_foundation.sql
