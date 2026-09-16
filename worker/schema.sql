@@ -2,3 +2,4 @@
 -- Apply migrations in lexical order. Current baseline:
 --   migrations/0001_runtime_foundation.sql
 --   migrations/0002_rating_aggregate_triggers.sql
+--   migrations/0003_comments_count_triggers.sql

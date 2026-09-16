@@ -1,4 +1,14 @@
 import { ApiError, type HealthResponse } from "../../src/core/api";
+import {
+  createComment,
+  deleteComment,
+  listComments,
+  markHelpful,
+  moderateComment,
+  parseCreateCommentRequest,
+  parseModerateCommentRequest,
+  reportComment,
+} from "./comments";
 import { parseRatingRequest, getRating, submitRating } from "./rating";
 import {
   apiErrorResponse,
@@ -37,6 +47,16 @@ function methodNotAllowed(mutation: boolean): Response {
 
 function articleRatingMatch(pathname: string): string | null {
   const match = pathname.match(/^\/v1\/articles\/([^/]+)\/rating$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function commentActionMatch(pathname: string, action: "helpful" | "report"): string | null {
+  const match = pathname.match(new RegExp(`^/v1/comments/([^/]+)/${action}$`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+function adminCommentMatch(pathname: string): string | null {
+  const match = pathname.match(/^\/admin\/api\/comments\/([^/]+)$/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
@@ -79,6 +99,41 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     return request.method === "GET"
       ? jsonResponse({ generatedAt: new Date(0).toISOString(), articles: [], rankings: {} })
       : methodNotAllowed(mutation);
+  }
+
+  if (url.pathname === "/v1/comments") {
+    if (request.method === "GET") {
+      return jsonResponse(await listComments(env.DB, env, url));
+    }
+    if (request.method === "POST") {
+      if (env.RATE_LIMIT_COMMENTS === "0") {
+        throw new ApiError(429, "RATE_LIMITED", "Comment rate limit exceeded.");
+      }
+      return mutationJsonResponse(await createComment(env.DB, env, parseCreateCommentRequest(await readStrictJson(request))));
+    }
+    return methodNotAllowed(mutation);
+  }
+
+  const helpfulCommentId = commentActionMatch(url.pathname, "helpful");
+  if (helpfulCommentId) {
+    return request.method === "POST" ? mutationJsonResponse(await markHelpful(env.DB, helpfulCommentId)) : methodNotAllowed(mutation);
+  }
+
+  const reportCommentId = commentActionMatch(url.pathname, "report");
+  if (reportCommentId) {
+    return request.method === "POST" ? mutationJsonResponse(await reportComment(env.DB, reportCommentId)) : methodNotAllowed(mutation);
+  }
+
+  const adminCommentId = adminCommentMatch(url.pathname);
+  if (adminCommentId) {
+    if (request.method === "PATCH") {
+      return mutationJsonResponse(await moderateComment(env.DB, adminCommentId, parseModerateCommentRequest(await readStrictJson(request))));
+    }
+    if (request.method === "DELETE") {
+      await deleteComment(env.DB, adminCommentId);
+      return mutationJsonResponse({ status: "deleted" });
+    }
+    return methodNotAllowed(mutation);
   }
 
   const ratingArticleId = articleRatingMatch(url.pathname);

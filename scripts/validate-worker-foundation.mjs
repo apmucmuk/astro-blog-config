@@ -17,9 +17,11 @@ const migrationDir = path.join(root, "worker/migrations");
 const migrations = (await readdir(migrationDir)).filter((file) => file.endsWith(".sql")).sort();
 assert(migrations.includes("0001_runtime_foundation.sql"), "Stage 5 baseline migration is missing.");
 assert(migrations.includes("0002_rating_aggregate_triggers.sql"), "Stage 6 rating aggregate trigger migration is missing.");
+assert(migrations.includes("0003_comments_count_triggers.sql"), "Stage 7 comments_count trigger migration is missing.");
 
 const migration = await read("worker/migrations/0001_runtime_foundation.sql");
 const ratingMigration = await read("worker/migrations/0002_rating_aggregate_triggers.sql");
+const commentsMigration = await read("worker/migrations/0003_comments_count_triggers.sql");
 const requiredTables = [
   "content_articles",
   "article_stats",
@@ -55,6 +57,22 @@ assert(
   ratingMigration.includes("trg_article_rating_votes_after_value_update") &&
     ratingMigration.includes("rating_sum = rating_sum - OLD.value + NEW.value"),
   "rating update trigger must maintain rating_sum from OLD/NEW values.",
+);
+assert(
+  commentsMigration.includes("trg_comments_after_insert_published") &&
+    commentsMigration.includes("comments_count = comments_count + 1"),
+  "comments insert trigger must increment comments_count for published rows.",
+);
+assert(
+  commentsMigration.includes("trg_comments_after_status_update") &&
+    commentsMigration.includes("OLD.status") &&
+    commentsMigration.includes("NEW.status"),
+  "comments status trigger must use OLD/NEW status transitions.",
+);
+assert(
+  commentsMigration.includes("trg_comments_after_delete_published") &&
+    commentsMigration.includes("comments_count = comments_count - 1"),
+  "comments delete trigger must decrement comments_count for published rows.",
 );
 
 const wrangler = await read("worker/wrangler.jsonc");

@@ -31,3 +31,46 @@ export type RatingResponse = {
 export type RatingRequest = {
   value: number;
 };
+
+export type CommentLinkRel = "dofollow" | "nofollow" | "sponsored";
+export type CommentStatus = "published" | "pending" | "spam";
+
+export type PublicComment = {
+  id: string;
+  parentId: string | null;
+  name: string;
+  body: string;
+  createdAt: string;
+  helpfulCount: number;
+  linkRel: CommentLinkRel | null;
+};
+
+export type CommentsListResponse = {
+  items: PublicComment[];
+  nextCursor: string | null;
+};
+
+export type CreateCommentRequest = {
+  articleId: string;
+  name: string;
+  body: string;
+  parentId?: string | null;
+  turnstileToken: string;
+};
+
+export type CreateCommentResponse =
+  | {
+      status: "published";
+      comment: PublicComment;
+    }
+  | {
+      status: "pending" | "spam";
+      message: string;
+    };
+
+export type ModerateCommentRequest = {
+  status?: CommentStatus;
+  reportsCount?: number;
+  helpfulCount?: number;
+  linkRel?: CommentLinkRel | null;
+};

@@ -26,6 +26,8 @@ export type Env = {
   POPULARITY_WINDOW_DAYS: string;
   VISITOR_COOKIE_NAME: string;
   RATE_LIMIT_RATINGS?: string;
+  RATE_LIMIT_COMMENTS?: string;
+  TURNSTILE_MODE?: "mock" | "production";
   TURNSTILE_SECRET_KEY?: string;
   CF_ACCESS_TEAM_DOMAIN?: string;
   CF_ACCESS_AUD?: string;

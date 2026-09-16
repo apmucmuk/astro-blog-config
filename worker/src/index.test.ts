@@ -125,4 +125,34 @@ describe("worker runtime foundation", () => {
     expect(body.error.code).toBe("RATE_LIMITED");
   });
 
+  it("keeps comments mutation errors no-store and exact-origin protected", async () => {
+    const invalidOrigin = await worker.fetch(
+      new Request("https://api.tragarze.pl/v1/comments", {
+        method: "POST",
+        headers: {
+          Origin: "https://evil.example",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      }),
+      env,
+    );
+    expect(invalidOrigin.status).toBe(403);
+    expect(invalidOrigin.headers.get("Cache-Control")).toBe("no-store");
+
+    const malformed = await worker.fetch(
+      new Request("https://api.tragarze.pl/v1/comments", {
+        method: "POST",
+        headers: {
+          Origin: "https://tragarze.pl",
+          "Content-Type": "application/json",
+        },
+        body: "{",
+      }),
+      env,
+    );
+    expect(malformed.status).toBe(400);
+    expect(malformed.headers.get("Cache-Control")).toBe("no-store");
+  });
+
 });
