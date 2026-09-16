@@ -7,14 +7,34 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 6 - Rating.
+Stage 7 - Comments.
 
 ## Status
 `complete`
 
-Stage 6 implementation has been verified locally in the repository branch `codex/stage-6-rating`.
+Stage 7 implementation has been verified locally in the repository branch `codex/stage-7-comments`.
 
 ## Verified checks
+### Stage 7
+- 2026-09-16 23:17 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current. pnpm printed a non-fatal update metadata network warning but exited 0.
+- 2026-09-16 23:16 +02:00 - `pnpm worker:validate` - PASS. Worker/D1 foundation validation remains valid and now verifies the Stage 7 comments_count trigger migration.
+- 2026-09-16 23:16 +02:00 - `pnpm test` - PASS. Vitest reported 7 test files passed and 37 tests passed, including 0/1/2+ link classification, body limit, malformed payload, missing/disabled article rejection, Turnstile success/failure/no-write boundary, comments_count transitions, delete behavior, helpful/report behavior, reply normalization, keyset pagination, featured excludeIds, empty featured exclusions, Origin/CORS/no-store error contract and Stage 6 rating concurrency regressions.
+- 2026-09-16 23:16 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
+- 2026-09-16 23:16 +02:00 - `pnpm build` - PASS. Production static build still generated accepted Stage 1-6 outputs; comments API failure does not break static article rendering.
+- 2026-09-16 23:16 +02:00 - `pnpm seo:validate` - PASS. Stage 1-3 SEO/content behavior regression remained valid.
+- 2026-09-16 23:17 +02:00 - `pnpm theme:validate` - PASS. Stage 4 static/theme browser regression remained valid.
+- 2026-09-16 23:17 +02:00 - Cloudflare deployed Worker/D1/Turnstile comments verification - BLOCKED by external authorization and unresolved Q005 provisioning details. No production Cloudflare account ID, D1 ID, Turnstile secret, tokens or other secrets were requested or committed.
+
+### Stage 7 implementation notes
+- Added versioned migration `worker/migrations/0003_comments_count_triggers.sql`; accepted `0001` and `0002` migrations were not rewritten.
+- `comments_count` is maintained by D1 triggers on comments insert/status update/delete, avoiding Worker-side stale read-before-write aggregate deltas.
+- Implemented public Comments API: `GET /v1/comments`, `POST /v1/comments`, `POST /v1/comments/{id}/helpful`, `POST /v1/comments/{id}/report`.
+- Implemented service-level moderation primitives needed for Stage 7: `PATCH /admin/api/comments/{id}` and `DELETE /admin/api/comments/{id}`. No Stage 9 admin UI or custom auth stack was implemented.
+- Added comments DTOs/runtime validation for public comment models, create request, moderation patch and comment status/link rel contracts.
+- Added Turnstile boundary in `worker/src/turnstile.ts`: local/mock mode accepts `test-pass`; failure creates no D1 row; production remains fail-closed without configured secret.
+- Implemented author/body limits, plain-text body storage, 0-link published, 1-link pending, 2+ link pending/non-publishable invariant, simple spam-pattern classification, reply normalization to root, keyset cursor pagination, max-5 featured `excludeIds`, and empty featured-list handling without `NOT IN ()`.
+- Did not implement Stage 8 reads/stats snapshot/popularity, Stage 9 admin UI, or production Cloudflare/Turnstile provisioning.
+
 ### Stage 6
 - 2026-09-16 23:03 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current. pnpm printed a non-fatal update metadata network warning but exited 0.
 - 2026-09-16 23:03 +02:00 - `pnpm worker:validate` - PASS. Stage 5 Worker/D1 foundation validation remains valid and now also verifies the Stage 6 rating aggregate trigger migration.
@@ -123,29 +143,27 @@ Stage 6 implementation has been verified locally in the repository branch `codex
 
 Note: `ASTRO_TELEMETRY_DISABLED=1` was required in this sandbox because Astro telemetry attempted to create `C:\Users\sunpl\AppData\Roaming\astro\Config`, which is outside the writable workspace. This was an environment permission issue, not a project type/build failure.
 
-## Required Stage 6 checks
+## Required Stage 7 checks
 The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks include:
-- personalized `GET /v1/articles/{articleId}/rating` returns returning visitor `myRating`;
-- first vote insert;
-- vote update;
-- same-value repeat does not distort aggregates;
-- one active vote per `site_id + article_id + visitor_id`;
-- aggregate `rating_sum` and `rating_count` correctness;
-- invalid rating rejected;
-- malformed payload rejected;
-- disabled/missing article rejected before vote mutation;
-- mutation Origin/CORS behavior preserved;
-- mutation responses and mutation errors are `no-store`;
-- visitor cookie flags and malformed identity behavior verified;
-- rate-limit rejection path exists;
-- static article/SEO/theme regressions continue to pass.
+- Turnstile server-side verification boundary;
+- normal published flow;
+- one-link pending flow;
+- multi-link pending / non-publishable invariant;
+- invalid reject/no-store/no-write failure behavior;
+- comments_count transition tests;
+- keyset pagination;
+- featuredIds excluded before LIMIT, including empty featured list;
+- reply normalization;
+- helpful and report endpoints;
+- service-level moderation transitions and physical delete;
+- Stage 1-6 regression checks continue to pass.
 
 ## Blockers
-Local Stage 6 rating implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED until the user provides real Cloudflare authorization/configuration outside the repository:
+Local Stage 7 comments implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED until the user provides real Cloudflare authorization/configuration outside the repository:
 - Cloudflare account permission to create/manage Workers and D1;
 - real preview and production D1 database IDs/names;
 - Worker deployment target for `tragarze-api`;
-- production/preview secrets configured in Cloudflare secret storage, especially `TURNSTILE_SECRET_KEY` when later stages require it;
+- production/preview Turnstile site-key/secret provisioning policy and `TURNSTILE_SECRET_KEY` configured in Cloudflare secret storage (Q005 remains open);
 - exact confirmed production origins/domains if Q001 changes the provisional `https://tragarze.pl` / `https://api.tragarze.pl` defaults.
 
 ## Update rules
