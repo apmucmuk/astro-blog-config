@@ -1,6 +1,16 @@
 import { ApiError, type HealthResponse } from "../../src/core/api";
-import { apiErrorResponse, corsPreflight, jsonResponse, mutationJsonResponse, requireMutationOrigin, withCors } from "./responses";
+import { parseRatingRequest, getRating, submitRating } from "./rating";
+import {
+  apiErrorResponse,
+  corsPreflight,
+  jsonResponse,
+  mutationJsonResponse,
+  privateJsonResponse,
+  requireMutationOrigin,
+  withCors,
+} from "./responses";
 import type { Env } from "./types";
+import { getOptionalVisitorIdentity, getOrCreateVisitorIdentity } from "./visitor";
 
 function isMutation(method: string): boolean {
   return !["GET", "HEAD", "OPTIONS"].includes(method);
@@ -25,6 +35,24 @@ function methodNotAllowed(mutation: boolean): Response {
   return mutation ? apiErrorResponse(error, true) : apiErrorResponse(error);
 }
 
+function articleRatingMatch(pathname: string): string | null {
+  const match = pathname.match(/^\/v1\/articles\/([^/]+)\/rating$/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+async function readStrictJson(request: Request): Promise<unknown> {
+  const contentType = request.headers.get("Content-Type") ?? "";
+  if (!contentType.toLowerCase().startsWith("application/json")) {
+    throw new ApiError(415, "UNSUPPORTED_MEDIA_TYPE", "Expected application/json request body.");
+  }
+
+  try {
+    return await request.json();
+  } catch {
+    throw new ApiError(400, "BAD_REQUEST", "Malformed JSON request body.");
+  }
+}
+
 async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
 
@@ -45,6 +73,28 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     return request.method === "GET"
       ? jsonResponse({ generatedAt: new Date(0).toISOString(), articles: [], rankings: {} })
       : methodNotAllowed(mutation);
+  }
+
+  const ratingArticleId = articleRatingMatch(url.pathname);
+  if (ratingArticleId) {
+    if (request.method === "GET") {
+      const visitor = getOptionalVisitorIdentity(request, env);
+      return privateJsonResponse(await getRating(env.DB, env.SITE_ID, ratingArticleId, visitor.visitorId));
+    }
+
+    if (request.method === "POST") {
+      const visitor = getOrCreateVisitorIdentity(request, env);
+      const body = parseRatingRequest(await readStrictJson(request));
+      const response = mutationJsonResponse(
+        await submitRating(env.DB, env.SITE_ID, ratingArticleId, visitor.visitorId ?? "", body.value),
+      );
+      if (visitor.setCookie) {
+        response.headers.set("Set-Cookie", visitor.setCookie);
+      }
+      return response;
+    }
+
+    return methodNotAllowed(mutation);
   }
 
   const notFound = new ApiError(404, "NOT_FOUND", "Route not found.");

@@ -35,3 +35,16 @@ export function requireNonEmptyString(value: unknown, field: string): string | A
 
   return { field, message: "Expected a non-empty string." };
 }
+
+export function requireIntegerInRange(
+  value: unknown,
+  field: string,
+  min: number,
+  max: number,
+): number | ApiFieldError {
+  if (typeof value === "number" && Number.isInteger(value) && value >= min && value <= max) {
+    return value;
+  }
+
+  return { field, message: `Expected an integer between ${min} and ${max}.` };
+}

@@ -25,6 +25,16 @@ export function mutationJsonResponse(body: unknown, init: ResponseInit = {}): Re
   });
 }
 
+export function privateJsonResponse(body: unknown, init: ResponseInit = {}): Response {
+  return jsonResponse(body, {
+    ...init,
+    headers: {
+      "Cache-Control": "private, no-store",
+      ...(init.headers ?? {}),
+    },
+  });
+}
+
 export function apiErrorResponse(error: unknown, mutation = false): Response {
   const apiError =
     error instanceof ApiError

@@ -85,4 +85,25 @@ describe("worker runtime foundation", () => {
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(body.error.code).toBe("METHOD_NOT_ALLOWED");
   });
+
+  it("rejects malformed visitor identity cookies on rating mutations with no-store", async () => {
+    const response = await worker.fetch(
+      new Request("https://api.tragarze.pl/v1/articles/art-tragarze-001/rating", {
+        method: "POST",
+        headers: {
+          Origin: "https://tragarze.pl",
+          Cookie: "tragarze_vid=not-valid",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ value: 5 }),
+      }),
+      env,
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect(body.error.code).toBe("VALIDATION_ERROR");
+  });
+
 });

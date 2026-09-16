@@ -21,3 +21,13 @@ export type ArticleStats = {
   ratingCount: number;
   updatedAtMs: number;
 };
+
+export type RatingResponse = {
+  ratingValue: number | null;
+  ratingCount: number;
+  myRating: number | null;
+};
+
+export type RatingRequest = {
+  value: number;
+};
