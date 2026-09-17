@@ -20,6 +20,11 @@ import {
   withCors,
 } from "./responses";
 import type { Env } from "./types";
+import { parseReadInput } from "../../src/core/api/reads";
+import { runtimeConfig } from "../../src/project/runtime.config";
+import { recordRead } from "./reads";
+import { getStats } from "./stats";
+import { requireReadCapacity } from "./read-limit";
 import { getOptionalVisitorIdentity, getOrCreateVisitorIdentity } from "./visitor";
 
 function isMutation(method: string): boolean {
@@ -97,8 +102,20 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (url.pathname === "/v1/stats") {
     return request.method === "GET"
-      ? jsonResponse({ generatedAt: new Date(0).toISOString(), articles: [], rankings: {} })
+      ? jsonResponse(await getStats(env.DB, env.SITE_ID, Number(env.POPULARITY_WINDOW_DAYS), runtimeConfig.ratingPriorWeight), {
+          headers: { "Cache-Control": `public, max-age=${runtimeConfig.statsCacheSeconds}`, Vary: "Origin" },
+        })
       : methodNotAllowed(mutation);
+  }
+
+  if (url.pathname === "/v1/read") {
+    if (request.method !== "POST") return methodNotAllowed(true);
+    const input = parseReadInput(await readStrictJson(request));
+    const visitor = getOrCreateVisitorIdentity(request, env);
+    await requireReadCapacity(env, visitor.visitorId!, input.articleId);
+    const response = mutationJsonResponse(await recordRead(env.DB, env.SITE_ID, input.articleId));
+    if (visitor.setCookie) response.headers.set("Set-Cookie", visitor.setCookie);
+    return response;
   }
 
   if (url.pathname === "/v1/comments") {

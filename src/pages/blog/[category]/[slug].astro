@@ -8,6 +8,7 @@ import BaseLayout from "@theme/layouts/BaseLayout.astro";
 import { navigation } from "@project/navigation";
 import { projectConfig } from "@project/site.config";
 import { routeSegments } from "@project/routing.config";
+import { runtimeConfig } from "@project/runtime.config";
 import categories from "../../../content/data/categories.json";
 
 export async function getStaticPaths() {
@@ -112,7 +113,7 @@ const jsonLd = [
     <link rel="alternate" hreflang="x-default" href={metadata.canonical} />
     {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}
   </Fragment>
-  <article>
+  <article data-stats-batch data-api-url={projectConfig.apiUrl}>
     <header class="article-header article-container">
       <nav class="breadcrumb" aria-label="Breadcrumbs">
         {breadcrumbs.map((item, index) => (
@@ -124,6 +125,7 @@ const jsonLd = [
         {authorProfiles.map((author) => <a href={author.url}>{author.name}</a>)}
         <time datetime={article.data.publishDate.toISOString()}>{article.data.publishDate.toLocaleDateString("pl-PL")}</time>
       </div>
+      <p data-stats-id={article.data.id}><span hidden>Czytelnicy: <span data-reads></span></span></p>
       <div class="hero__inner">
         <h1>{article.data.title}</h1>
         <p class="lede">{article.data.description}</p>
@@ -138,8 +140,14 @@ const jsonLd = [
         fetchpriority="high"
       />
     </header>
-    <div class="article-body article-container">
+    <div class="article-body article-container" data-read-article data-site-id={projectConfig.siteId} data-article-id={article.data.id} data-api-url={projectConfig.apiUrl} data-dedup-seconds={runtimeConfig.readDedupWindowSeconds}>
         <Content />
     </div>
   </article>
 </BaseLayout>
+<script>
+  import { mountReadDetector } from "@features/reads/detector";
+  import { enhanceStats } from "@features/stats/listing";
+  document.querySelectorAll<HTMLElement>("[data-read-article]").forEach(mountReadDetector);
+  document.querySelectorAll<HTMLElement>("[data-stats-batch]").forEach((element) => { void enhanceStats(element); });
+</script>

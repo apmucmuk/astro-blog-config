@@ -27,6 +27,8 @@ export type Env = {
   VISITOR_COOKIE_NAME: string;
   RATE_LIMIT_RATINGS?: string;
   RATE_LIMIT_COMMENTS?: string;
+  RATE_LIMIT_READS?: string;
+  READ_RATE_LIMITER?: { limit: (input: { key: string }) => Promise<{ success: boolean }> };
   TURNSTILE_MODE?: "mock" | "production";
   TURNSTILE_SECRET_KEY?: string;
   CF_ACCESS_TEAM_DOMAIN?: string;
