@@ -175,6 +175,7 @@ describe("comments stage 7", () => {
     expect(() => parseCreateCommentRequest({ articleId: "art-tragarze-001", name: "Jan", body: "ok", turnstileToken: "test-pass", extra: true })).toThrow();
     const local = fresh();
     await expect(createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Jan", body: "ok", turnstileToken: "bad" }, 10)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect((local.DB as CommentsDb).stats.size).toBe(0);
     await expect(createComment(local.DB, local, { articleId: "missing", name: "Jan", body: "ok", turnstileToken: "test-pass" }, 10)).rejects.toMatchObject({ code: "NOT_FOUND" });
     await expect(createComment(local.DB, local, { articleId: "disabled", name: "Jan", body: "ok", turnstileToken: "test-pass" }, 10)).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect((local.DB as CommentsDb).comments.size).toBe(0);
@@ -229,6 +230,11 @@ describe("comments stage 7", () => {
     const id = created.status === "published" ? created.comment.id : "";
     await markHelpful(local.DB, id);
     await reportComment(local.DB, id);
+    const pending = await createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Jan", body: "https://example.com", turnstileToken: "test-pass" }, 20);
+    const pendingId = [...(local.DB as CommentsDb).comments.keys()].find((commentId) => commentId !== id) ?? "";
+    expect(pending.status).toBe("pending");
+    await expect(reportComment(local.DB, "missing")).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(reportComment(local.DB, pendingId)).rejects.toMatchObject({ code: "NOT_FOUND" });
     const row = (local.DB as CommentsDb).comments.get(id)!;
     expect(row.helpful_count).toBe(1);
     expect(row.reports_count).toBe(1);

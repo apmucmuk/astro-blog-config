@@ -16,6 +16,13 @@ Stage 7 implementation has been verified locally in the repository branch `codex
 
 ## Verified checks
 ### Stage 7
+- 2026-09-17 08:32 +02:00 - `pnpm worker:validate` - PASS after post-review Stage 7 hardening. Worker/D1 foundation validation still passes with the Stage 7 comments_count trigger migration.
+- 2026-09-17 08:32 +02:00 - `pnpm test` - PASS after post-review Stage 7 hardening. Vitest reported 7 test files passed and 37 tests passed, including stricter Turnstile failure no-write coverage for `article_stats` and report rejection for missing/non-published comments.
+- 2026-09-17 08:32 +02:00 - `pnpm check` - PASS. Content validation, Astro typecheck and architecture boundary check passed with 0 errors, 0 warnings and 0 hints.
+- 2026-09-17 08:32 +02:00 - `pnpm build` - PASS. Production static build still generated accepted Stage 1-6 outputs and Stage 7 Worker changes did not affect static rendering.
+- 2026-09-17 08:32 +02:00 - `pnpm seo:validate` - PASS. Stage 1-3 SEO/content behavior regression remained valid.
+- 2026-09-17 08:32 +02:00 - `pnpm theme:validate` - PASS. Stage 4 static/theme browser regression remained valid.
+- 2026-09-17 08:32 +02:00 - Cloudflare deployed Worker/D1/Turnstile comments verification - BLOCKED by external authorization and unresolved Q005 provisioning details. No production Cloudflare account ID, D1 ID, Turnstile secret, tokens or other secrets were requested or committed.
 - 2026-09-16 23:17 +02:00 - `pnpm install --frozen-lockfile --config.confirmModulesPurge=false` - PASS. Lockfile is current. pnpm printed a non-fatal update metadata network warning but exited 0.
 - 2026-09-16 23:16 +02:00 - `pnpm worker:validate` - PASS. Worker/D1 foundation validation remains valid and now verifies the Stage 7 comments_count trigger migration.
 - 2026-09-16 23:16 +02:00 - `pnpm test` - PASS. Vitest reported 7 test files passed and 37 tests passed, including 0/1/2+ link classification, body limit, malformed payload, missing/disabled article rejection, Turnstile success/failure/no-write boundary, comments_count transitions, delete behavior, helpful/report behavior, reply normalization, keyset pagination, featured excludeIds, empty featured exclusions, Origin/CORS/no-store error contract and Stage 6 rating concurrency regressions.
@@ -32,6 +39,8 @@ Stage 7 implementation has been verified locally in the repository branch `codex
 - Implemented service-level moderation primitives needed for Stage 7: `PATCH /admin/api/comments/{id}` and `DELETE /admin/api/comments/{id}`. No Stage 9 admin UI or custom auth stack was implemented.
 - Added comments DTOs/runtime validation for public comment models, create request, moderation patch and comment status/link rel contracts.
 - Added Turnstile boundary in `worker/src/turnstile.ts`: local/mock mode accepts `test-pass`; failure creates no D1 row; production remains fail-closed without configured secret.
+- Hardened comment creation so Turnstile failure occurs before comment-path D1 writes, including lazy `article_stats` creation.
+- Hardened report behavior so missing and non-published comments return the shared not-found error contract instead of a false `reported` success.
 - Implemented author/body limits, plain-text body storage, 0-link published, 1-link pending, 2+ link pending/non-publishable invariant, simple spam-pattern classification, reply normalization to root, keyset cursor pagination, max-5 featured `excludeIds`, and empty featured-list handling without `NOT IN ()`.
 - Did not implement Stage 8 reads/stats snapshot/popularity, Stage 9 admin UI, or production Cloudflare/Turnstile provisioning.
 

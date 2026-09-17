@@ -249,8 +249,8 @@ export async function listComments(db: D1Database, env: Env, url: URL): Promise<
 
 export async function createComment(db: D1Database, env: Env, request: CreateCommentRequest, nowMs = Date.now()): Promise<CreateCommentResponse> {
   await assertRuntimeArticleEnabled(db, env.SITE_ID, request.articleId);
-  await ensureArticleStats(db, env.SITE_ID, request.articleId, nowMs);
   await verifyTurnstile(request.turnstileToken, env);
+  await ensureArticleStats(db, env.SITE_ID, request.articleId, nowMs);
   const parentId = await resolveRootParent(db, env.SITE_ID, request.articleId, request.parentId);
   const classification = classifyComment(request.body);
   const id = createCommentId();
@@ -347,6 +347,10 @@ export async function markHelpful(db: D1Database, id: string): Promise<PublicCom
 }
 
 export async function reportComment(db: D1Database, id: string): Promise<{ status: "reported" }> {
+  const row = await getComment(db, id);
+  if (!row || row.status !== "published") {
+    throw new ApiError(404, "NOT_FOUND", "Comment not found.");
+  }
   await db.prepare("UPDATE comments SET reports_count = reports_count + 1 WHERE id = ? AND status = 'published'").bind(id).run();
   return { status: "reported" };
 }
