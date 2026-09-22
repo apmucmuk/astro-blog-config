@@ -12,7 +12,7 @@ export async function buildListing() {
   const entries: ListingEntry[] = filterPublished(await getCollection("blog")).map(({ data }) => ({
     id: data.id, title: data.title, description: data.description, locale: data.locale,
     publishDate: data.publishDate.toISOString(), updatedDate: data.updatedDate?.toISOString(), updateNote: data.updateNote,
-    category: data.category, tags: data.tags, people: [...data.authors, ...data.contributors.map((person) => person.person)],
+    category: data.category, tags: data.tags, authors: data.authors, contributors: data.contributors.map((person) => person.person),
     image: data.image,
     url: articleCanonical({ locale: data.locale, segments: routeSegments, siteUrl: projectConfig.siteUrl,
       categorySlug: categories.find((category) => category.id === data.category)!.slug, articleSlug: data.slug }),

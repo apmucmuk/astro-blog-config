@@ -7,14 +7,49 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 7 - Comments.
+Stage 8 - Reads + Stats.
 
 ## Status
 `complete`
 
-Stage 7 implementation has been verified locally in the repository branch `codex/stage-7-comments`.
+Stage 8 implementation has been verified locally in `codex/stage-8-reads-stats`, based on accepted Stage 7 commit `edf65c40e42d2daafc134b9a554d493aed3536ef`.
+Local completion does not imply production Cloudflare readiness. Stage 9 has not been started.
 
 ## Verified checks
+### Stage 8 (2026-09-22)
+- Restored clean workspace at checkpoint `157a506d46a554e00b5796fa315a13fe955f108b`; local and remote HEAD matched. Preserved the existing implementation.
+- `pnpm test` - PASS: 11 files / 70 tests. Includes real SQLite execution of accepted migrations and atomic batches, 50 concurrent/repeated reads, UTC midnight, rollback on daily-write failure, unchanged comments/rating aggregates, invalid/disabled/future articles, Origin/errors/no-store, public snapshot rankings, cache isolation/fallback, transient limiter concurrency/expiry, browser detector unit tests, global pagination over 45 entries and authored-vs-contributor filtering.
+- `pnpm check` - PASS: content validation, Astro typecheck (0 errors/warnings/hints) and architecture boundaries.
+- `pnpm worker:validate` - PASS: runtime registry and foundation checks.
+- `pnpm build` - PASS: production static output includes blog home, category listing `/blog/poradniki/`, author listing and fingerprinted published-content manifest; accepted article/SEO outputs preserved.
+- `pnpm seo:validate` - PASS: production HTML/SEO regression.
+- `pnpm theme:validate` - PASS: static theme and browser/no-JS/focus/responsive regression.
+- `pnpm reads:validate` - PASS: production-build Playwright checks. 10-second qualification, scroll qualification, single POST, refresh dedup, no heartbeat, lazy manifest, shared stats request, Blog/category/author selector allowlists, sort URL/Back restoration, static fallback on API failure, no-JS listing, widths 320/375/1280. Screenshot: `.cache/stage8/listing.png` (local generated evidence, not committed).
+- `git diff edf65c40e42d2daafc134b9a554d493aed3536ef -- worker/migrations` - PASS: empty; accepted migrations unchanged, no new migration required.
+
+### Exact SPEC 93.8 gate mapping
+| Gate | Result | Evidence |
+| --- | --- | --- |
+| GET /v1/stats authoritative snapshot | PASS | `worker/src/reads.test.js`: D1-derived stats, rolling/all-time/rating order, enabled IDs, site isolation |
+| Qualified read condition tested | PASS | detector unit tests and production-browser timer/scroll checks |
+| Single POST per page session | PASS | concurrent detector triggers and browser timer + scroll |
+| Simple anonymous dedup | PASS | accepted-only marker, window boundary, refresh, storage failure; no visitor read table |
+| No heartbeat | PASS | browser clock advances another 60 seconds without another POST |
+| Batch stats source | PASS | shared snapshot consumer and Worker Cache API tests |
+| Listing uses no N requests | PASS | 20 consumers share one request; browser sort changes reuse one batch |
+| Snapshot failure preserves static UI | PASS | offline/malformed unit tests and API-failure/no-JS production-browser checks |
+| Deployed Cloudflare D1/Cache/rate-limiter verification | BLOCKED | no external account authorization, real D1 target or provisioned READ_RATE_LIMITER; Q004 thresholds remain open |
+
+### Stage 8 implementation notes
+- `POST /v1/read`: shared strict input schema, existing cookie/Origin/CORS/error/no-store primitives, runtime publication check and resource rate limiting.
+- `worker/src/reads.ts`: atomic D1 batch increments `article_stats.reads` and current UTC `article_read_daily`; SQL increments avoid stale read-before-write deltas. Lazy initialization reuses Stage 5 helper. Persistent raw events, visitor read history and raw IP identity are absent.
+- `GET /v1/stats`: one SQL snapshot for visible aggregates and stable ordered IDs; project-configured rolling window, all-time reads, comments and internal Bayesian rating order. Zero-vote rating stays null and scores never become public fields.
+- `worker/src/stats-cache.ts`: public one-hour cache, isolated by site/environment/window/prior, no personalized state; cache failure falls back to D1.
+- `src/features/reads/detector.ts`: tiny non-React script, 10 seconds OR 25% article, at most one attempted POST per load, accepted-only browser marker, failure leaves article readable.
+- Completed after checkpoint: replaced DOM-only listing reorder with lazy fingerprinted manifest, global order-before-slice pagination, locale filtering, updated-only editorial sort, URL/history handling and static fallback. Added category listing with its §74 allowlist and author listing with authored-only membership and its distinct §74 allowlist; static page-two routes are generated when collection size requires them. Added production browser gates and cache/limiter/publication regression cases.
+- Provider binding `READ_RATE_LIMITER` is required in preview/production and fails closed if missing. Development uses bounded expiring memory only. Deployment instructions are in `docs/CLOUDFLARE_SETUP.md`; no credentials or production IDs were added.
+- Intermediate implementation was pushed in `4c93317`; this report records the final Stage 8 evidence. No Stage 9 work.
+
 ### Stage 7
 - 2026-09-17 08:32 +02:00 - `pnpm worker:validate` - PASS after post-review Stage 7 hardening. Worker/D1 foundation validation still passes with the Stage 7 comments_count trigger migration.
 - 2026-09-17 08:32 +02:00 - `pnpm test` - PASS after post-review Stage 7 hardening. Vitest reported 7 test files passed and 37 tests passed, including stricter Turnstile failure no-write coverage for `article_stats` and report rejection for missing/non-published comments.
@@ -152,7 +187,7 @@ Stage 7 implementation has been verified locally in the repository branch `codex
 
 Note: `ASTRO_TELEMETRY_DISABLED=1` was required in this sandbox because Astro telemetry attempted to create `C:\Users\sunpl\AppData\Roaming\astro\Config`, which is outside the writable workspace. This was an environment permission issue, not a project type/build failure.
 
-## Required Stage 7 checks
+## Historical Stage 7 checks
 The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks include:
 - Turnstile server-side verification boundary;
 - normal published flow;
@@ -168,10 +203,11 @@ The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks 
 - Stage 1-6 regression checks continue to pass.
 
 ## Blockers
-Local Stage 7 comments implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED until the user provides real Cloudflare authorization/configuration outside the repository:
+Local Stage 8 implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED pending external authorization/configuration outside the repository:
 - Cloudflare account permission to create/manage Workers and D1;
 - real preview and production D1 database IDs/names;
 - Worker deployment target for `tragarze-api`;
+- `READ_RATE_LIMITER` binding, environment-specific namespace and confirmed thresholds (Q004); production read counting deliberately fails closed until provisioned;
 - production/preview Turnstile site-key/secret provisioning policy and `TURNSTILE_SECRET_KEY` configured in Cloudflare secret storage (Q005 remains open);
 - exact confirmed production origins/domains if Q001 changes the provisional `https://tragarze.pl` / `https://api.tragarze.pl` defaults.
 

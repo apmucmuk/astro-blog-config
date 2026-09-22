@@ -1,0 +1,15 @@
+---
+import CategoryListing from "@project/CategoryListing.astro";
+import { buildListing, listingPageSize } from "@project/listing";
+import { projectConfig } from "@project/site.config";
+import categories from "../../../../content/data/categories.json";
+export async function getStaticPaths() {
+  const { entries } = await buildListing();
+  return categories.flatMap((category) => {
+    const total = entries.filter((entry) => entry.locale === projectConfig.locale && entry.category === category.id).length;
+    return Array.from({ length: Math.max(0, Math.ceil(total / listingPageSize) - 1) }, (_, index) => ({ params: { category: category.slug, page: String(index + 2) }, props: { category } }));
+  });
+}
+const { category } = Astro.props;
+---
+<CategoryListing {category} page={Number(Astro.params.page)} />

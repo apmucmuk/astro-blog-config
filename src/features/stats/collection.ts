@@ -3,12 +3,12 @@ import type { StatsSnapshot } from "../../core/api/reads";
 export type ListingEntry = {
   id: string; url: string; locale: string; title: string; description: string;
   publishDate: string; updatedDate?: string; updateNote?: string;
-  category: string; tags: string[]; people: string[]; image: { src: string; alt: string };
+  category: string; tags: string[]; authors: string[]; contributors: string[]; image: { src: string; alt: string };
 };
 
 export function collectionPage(entries: ListingEntry[], sort: string, page: number, pageSize: number,
-  locale: string, snapshot?: StatsSnapshot | null) {
-  let ordered = entries.filter((entry) => entry.locale === locale);
+  locale: string, snapshot?: StatsSnapshot | null, member: (entry: ListingEntry) => boolean = () => true) {
+  let ordered = entries.filter((entry) => entry.locale === locale && member(entry));
   const tie = (a: ListingEntry, b: ListingEntry) => Date.parse(b.publishDate) - Date.parse(a.publishDate) ||
     (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   if (sort === "updated") {

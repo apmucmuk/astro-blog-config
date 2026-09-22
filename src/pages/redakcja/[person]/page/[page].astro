@@ -1,0 +1,36 @@
+---
+import { getCollection } from "astro:content";
+import { filterPublished } from "@core/content/lifecycle";
+import { seoMetadata } from "@core/seo/metadata";
+import BaseLayout from "@theme/layouts/BaseLayout.astro";
+import ListingSurface from "@project/ListingSurface.astro";
+import { navigation } from "@project/navigation";
+import { projectConfig } from "@project/site.config";
+import { routeSegments } from "@project/routing.config";
+import { personPath } from "@core/routing/routes";
+import { buildListing, listingPageSize } from "@project/listing";
+import { collectionPage, listingUrl } from "@features/stats/collection";
+export async function getStaticPaths() {
+  const people = await getCollection("people"); const articles = filterPublished(await getCollection("blog"));
+  return people.flatMap((person) => {
+    const total = articles.filter((article) => article.data.authors.includes(person.data.id)).length;
+    return Array.from({ length: Math.max(0, Math.ceil(total / listingPageSize) - 1) }, (_, index) => ({ params: { person: person.data.slug, page: String(index + 2) }, props: { person } }));
+  });
+}
+const { person } = Astro.props;
+const page = Number(Astro.params.page);
+const base = `${personPath({ segments: routeSegments, personSlug: person.data.slug })}/`;
+const { entries, manifestUrl } = await buildListing();
+const authored = collectionPage(entries, "newest", page, listingPageSize, projectConfig.locale, null, (entry) => entry.authors.includes(person.data.id));
+const metadata = seoMetadata({ title: `${person.data.name} - redakcja tragarze.pl`, description: person.data.bioShort, pathname: listingUrl(base, page, "newest"), siteUrl: projectConfig.siteUrl, noindex: person.data.noindex });
+---
+<BaseLayout title={metadata.title} description={metadata.description} locale={person.data.locale} siteName={projectConfig.name} navigation={navigation}>
+  <Fragment slot="head"><meta name="description" content={metadata.description} /><link rel="canonical" href={metadata.canonical} /></Fragment>
+  <section class="profile container"><h1>{person.data.name}</h1><h2>Publikacje autora</h2>
+    <ListingSurface {base} items={authored.items} total={authored.total} {page} {manifestUrl} person={person.data.id} allowedSorts={["newest", "popular", "comments", "updated"]} />
+  </section>
+</BaseLayout>
+<script>
+  import { enhanceStats } from "@features/stats/listing";
+  document.querySelectorAll<HTMLElement>("[data-stats-batch]").forEach((element) => { void enhanceStats(element); });
+</script>

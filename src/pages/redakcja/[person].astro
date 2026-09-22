@@ -7,6 +7,9 @@ import BaseLayout from "@theme/layouts/BaseLayout.astro";
 import { navigation } from "@project/navigation";
 import { projectConfig } from "@project/site.config";
 import { routeSegments } from "@project/routing.config";
+import { buildListing, listingPageSize } from "@project/listing";
+import { collectionPage } from "@features/stats/collection";
+import ListingSurface from "@project/ListingSurface.astro";
 
 export async function getStaticPaths() {
   const people = await getCollection("people");
@@ -25,7 +28,10 @@ export async function getStaticPaths() {
 }
 
 const { person, authoredArticles, contributedArticles } = Astro.props;
+const { entries, manifestUrl } = await buildListing();
 const pathname = personPath({ segments: routeSegments, personSlug: person.data.slug });
+const base = `${pathname}/`;
+const authored = collectionPage(entries, "newest", 1, listingPageSize, projectConfig.locale, null, (entry) => entry.authors.includes(person.data.id));
 const metadata = seoMetadata({
   title: `${person.data.name} - redakcja tragarze.pl`,
   description: person.data.bioShort,
@@ -68,7 +74,7 @@ const jsonLd = [
       {authoredArticles.length > 0 && (
         <section class="card">
           <h2>Publikacje autora</h2>
-          <ul>{authoredArticles.map((article) => <li>{article.data.title}</li>)}</ul>
+          <ListingSurface {base} items={authored.items} total={authored.total} page={1} {manifestUrl} person={person.data.id} allowedSorts={["newest", "popular", "comments", "updated"]} />
         </section>
       )}
       {contributedArticles.length > 0 && (
@@ -80,3 +86,7 @@ const jsonLd = [
     </div>
   </section>
 </BaseLayout>
+<script>
+  import { enhanceStats } from "@features/stats/listing";
+  document.querySelectorAll<HTMLElement>("[data-stats-batch]").forEach((element) => { void enhanceStats(element); });
+</script>

@@ -3,6 +3,7 @@ import { collectionPage, listingUrl, type ListingEntry } from "./collection";
 import type { StatsSnapshot } from "../../core/api/reads";
 
 const entries = Array.from({ length: 45 }, (_, i) => ({ id: String(i), locale: "pl", publishDate: new Date(1000 + i).toISOString(),
+  authors: [], contributors: [], category: "category", tags: [], image: { src: "", alt: "" }, title: "", description: "", url: "https://example.test/",
   ...(i % 2 ? { updatedDate: new Date(2000 + i).toISOString() } : {}),
 })) as ListingEntry[];
 describe("global listing ordering", () => {
@@ -11,6 +12,13 @@ describe("global listing ordering", () => {
     const snapshot = { rankings: { popularNow: ranking } } as StatsSnapshot;
     expect(collectionPage(entries, "popularNow", 2, 20, "pl", snapshot).items.map((entry) => entry.id)).toEqual(entries.slice(20, 40).map((entry) => entry.id));
     expect(collectionPage(entries, "popularNow", 1, 20, "en", snapshot).total).toBe(0);
+  });
+  it("keeps authored publications separate from editorial contributions", () => {
+    const memberEntries = [
+      { ...entries[0], id: "author", authors: ["jan"], contributors: [] },
+      { ...entries[1], id: "contributor", authors: [], contributors: ["jan"] },
+    ];
+    expect(collectionPage(memberEntries, "newest", 1, 20, "pl", null, (entry) => entry.authors.includes("jan")).items.map((entry) => entry.id)).toEqual(["author"]);
   });
   it("updated excludes missing dates and newest needs no snapshot", () => {
     expect(collectionPage(entries, "updated", 1, 20, "pl").total).toBe(22);

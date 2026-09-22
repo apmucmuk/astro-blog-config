@@ -1,0 +1,28 @@
+---
+import BaseLayout from "@theme/layouts/BaseLayout.astro";
+import ListingSurface from "./ListingSurface.astro";
+import { projectConfig } from "./site.config";
+import { navigation } from "./navigation";
+import { buildListing, listingPageSize } from "./listing";
+import { collectionPage, listingUrl } from "@features/stats/collection";
+type Props = { category: { id: string; slug: string; name: string; description: string }; page?: number };
+const { category, page = 1 } = Astro.props;
+const { entries, manifestUrl } = await buildListing();
+const base = `/blog/${category.slug}/`;
+const { items, total } = collectionPage(entries, "newest", page, listingPageSize, projectConfig.locale, null, (entry) => entry.category === category.id);
+---
+<BaseLayout title={`${category.name} - Blog - ${projectConfig.name}`} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
+  <Fragment slot="head">
+    <meta name="description" content={category.description} />
+    <link rel="canonical" href={new URL(listingUrl(base, page, "newest"), projectConfig.siteUrl)} />
+  </Fragment>
+  <section class="container page-section">
+    <h1>{category.name}</h1>
+    <p class="lede">{category.description}</p>
+    <ListingSurface {base} {items} {total} {page} {manifestUrl} category={category.id} allowedSorts={["newest", "popularNow", "rating", "comments", "updated"]} />
+  </section>
+</BaseLayout>
+<script>
+  import { enhanceStats } from "@features/stats/listing";
+  document.querySelectorAll<HTMLElement>("[data-stats-batch]").forEach((element) => { void enhanceStats(element); });
+</script>

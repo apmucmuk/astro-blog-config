@@ -1,0 +1,35 @@
+---
+import type { ListingEntry } from "@features/stats/collection";
+import { listingUrl } from "@features/stats/collection";
+import { projectConfig } from "./site.config";
+import { listingPageSize } from "./listing";
+type Props = {
+  base: string; items: ListingEntry[]; total: number; page: number; manifestUrl: string;
+  allowedSorts: string[]; category?: string; person?: string;
+};
+const { base, items, total, page, manifestUrl, allowedSorts, category, person } = Astro.props;
+const labels: Record<string, string> = {
+  newest: "Najnowsze", popularNow: "Popularne teraz", popular: "Popularne", rating: "Najlepiej oceniane",
+  comments: "Dyskutowane", updated: "Ostatnio aktualizowane",
+};
+---
+<div data-stats-batch data-api-url={projectConfig.apiUrl} data-manifest-url={manifestUrl} data-locale={projectConfig.locale}
+  data-page-size={listingPageSize} data-base={base} data-category={category} data-person={person}>
+  <label>Sortowanie <select data-stats-sort disabled>
+    {allowedSorts.map((sort) => <option value={sort}>{labels[sort]}</option>)}
+  </select></label>
+  <p data-stats-error role="status" hidden>Nie udało się pobrać statystyk. Wyświetlamy najnowsze publikacje.</p>
+  <p data-stats-empty hidden>Brak publikacji.</p>
+  <ul data-stats-list aria-live="polite">
+    {items.map((article) => <li data-stats-id={article.id}>
+      <h2><a href={article.url}>{article.title}</a></h2>
+      <p>{article.description}</p>
+      {article.updatedDate && article.updateNote && <p><time datetime={article.updatedDate}>{new Date(article.updatedDate).toLocaleDateString("pl-PL")}</time>: {article.updateNote}</p>}
+      <p hidden>Czytelnicy: <span data-reads></span></p>
+    </li>)}
+  </ul>
+  <nav data-stats-pagination aria-label="Strony">
+    {Array.from({ length: Math.ceil(total / listingPageSize) }, (_, index) => <a href={listingUrl(base, index + 1, "newest")} aria-current={page === index + 1 ? "page" : undefined}>{index + 1}</a>)}
+  </nav>
+  <template data-stats-card><li><h2><a></a></h2><p data-description></p><p hidden>Czytelnicy: <span data-reads></span></p></li></template>
+</div>

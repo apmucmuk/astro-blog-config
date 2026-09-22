@@ -4,6 +4,7 @@ import { projectConfig } from "./site.config";
 import { navigation } from "./navigation";
 import { buildListing, listingPageSize } from "./listing";
 import { collectionPage, listingUrl } from "@features/stats/collection";
+import ListingSurface from "./ListingSurface.astro";
 const { page = 1 } = Astro.props;
 const { entries, manifestUrl } = await buildListing();
 const { items, total } = collectionPage(entries, "newest", page, listingPageSize, projectConfig.locale);
@@ -13,29 +14,9 @@ const { items, total } = collectionPage(entries, "newest", page, listingPageSize
     <meta name="description" content="Poradniki o przygotowaniu i organizacji przeprowadzki." />
     <link rel="canonical" href={new URL(listingUrl("/blog/", page, "newest"), projectConfig.siteUrl)} />
   </Fragment>
-  <section class="container page-section" data-stats-batch data-api-url={projectConfig.apiUrl}
-    data-manifest-url={manifestUrl} data-locale={projectConfig.locale} data-page-size={listingPageSize} data-base="/blog/">
+  <section class="container page-section">
     <h1>Blog</h1>
-    <label>Sortowanie <select data-stats-sort disabled>
-      <option value="newest">Najnowsze</option>
-      <option value="popularNow">Popularne teraz</option>
-      <option value="rating">Najwyżej oceniane</option>
-      <option value="comments">Najwięcej komentarzy</option>
-      <option value="updated">Ostatnio aktualizowane</option>
-    </select></label>
-    <p data-stats-error role="status" hidden>Nie udało się pobrać statystyk. Wyświetlamy najnowsze publikacje.</p>
-    <p data-stats-empty hidden>Brak publikacji.</p>
-    <ul data-stats-list aria-live="polite">
-      {items.map((article) => <li data-stats-id={article.id}>
-        <h2><a href={article.url}>{article.title}</a></h2>
-        <p>{article.description}</p>
-        <p hidden>Czytelnicy: <span data-reads></span></p>
-      </li>)}
-    </ul>
-    <nav data-stats-pagination aria-label="Strony">
-      {Array.from({ length: Math.ceil(total / listingPageSize) }, (_, index) => <a href={listingUrl("/blog/", index + 1, "newest")} aria-current={page === index + 1 ? "page" : undefined}>{index + 1}</a>)}
-    </nav>
-    <template data-stats-card><li><h2><a></a></h2><p data-description></p><p hidden>Czytelnicy: <span data-reads></span></p></li></template>
+    <ListingSurface base="/blog/" {items} {total} {page} {manifestUrl} allowedSorts={["newest", "popularNow", "rating", "comments", "updated"]} />
   </section>
 </BaseLayout>
 <script>

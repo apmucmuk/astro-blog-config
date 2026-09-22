@@ -63,6 +63,14 @@ try {
   assert.equal(stats, initialStats + 1, "One shared batch stats request");
   await page.goBack();
   await page.waitForFunction(() => document.querySelector("select").value === "popularNow");
+  await page.goto(base + "/blog/poradniki/");
+  assert.deepEqual(await page.locator("[data-stats-sort] option").evaluateAll((options) => options.map((option) => option.value)), ["newest", "popularNow", "rating", "comments", "updated"]);
+  await page.selectOption("[data-stats-sort]", "comments");
+  await page.waitForFunction(() => location.search === "?sort=comments");
+  await page.goto(base + "/redakcja/jan-kowalski/");
+  assert.deepEqual(await page.locator("[data-stats-sort] option").evaluateAll((options) => options.map((option) => option.value)), ["newest", "popular", "comments", "updated"]);
+  await page.selectOption("[data-stats-sort]", "popular");
+  await page.waitForFunction(() => location.search === "?sort=popular");
   for (const width of [320, 375, 1280]) {
     await page.setViewportSize({ width, height: 812 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `Listing overflow at ${width}`);
@@ -81,6 +89,10 @@ try {
   const noJs = await browser.newContext({ javaScriptEnabled: false });
   const staticPage = await noJs.newPage();
   await staticPage.goto(base + "/blog/?sort=rating");
+  assert(await staticPage.locator("[data-stats-list] a").count() > 0);
+  await staticPage.goto(base + "/blog/poradniki/?sort=rating");
+  assert(await staticPage.locator("[data-stats-list] a").count() > 0);
+  await staticPage.goto(base + "/redakcja/jan-kowalski/?sort=popular");
   assert(await staticPage.locator("[data-stats-list] a").count() > 0);
   await noJs.close();
   console.log("Stage 8 browser gates PASS: 10s/scroll, single POST, refresh dedup, no heartbeat, lazy batch listing, URL history, API failure, no-JS, widths 320/375/1280.");

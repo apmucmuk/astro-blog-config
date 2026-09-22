@@ -57,7 +57,10 @@ function mountListing(root: HTMLElement, apiUrl: string) {
     }
     try {
       const [entries, snapshot] = await Promise.all([loadManifest(), sort === "newest" || sort === "updated" ? null : fetchSnapshot(apiUrl)]);
-      const result = collectionPage(entries, sort, page, pageSize, root.dataset.locale!, snapshot);
+      const category = root.dataset.category;
+      const person = root.dataset.person;
+      const result = collectionPage(entries, sort, page, pageSize, root.dataset.locale!, snapshot, (entry) =>
+        (!category || entry.category === category) && (!person || entry.authors.includes(person)));
       if (current !== generation) return;
       const fragments = result.items.map((entry) => {
         const item = template.content.firstElementChild!.cloneNode(true) as HTMLElement;

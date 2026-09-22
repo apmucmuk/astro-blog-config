@@ -1,0 +1,9 @@
+---
+import CategoryListing from "@project/CategoryListing.astro";
+import categories from "../../../content/data/categories.json";
+export async function getStaticPaths() {
+  return categories.map((category) => ({ params: { category: category.slug }, props: { category } }));
+}
+const { category } = Astro.props;
+---
+<CategoryListing {category} />
