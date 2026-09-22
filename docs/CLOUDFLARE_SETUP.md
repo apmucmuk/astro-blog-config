@@ -158,6 +158,8 @@ Production deploy should fail closed on build/content validation errors.
 
 D1 migrations and registry sync must be explicit deployment stages, not hidden side effects of a page request.
 
+The repository-owned artifact, environment-template and ordered deployment commands are in `docs/DEPLOYMENT.md`. Do not replace the external preview/production configuration files with committed values.
+
 ## 13. Domains / DNS
 
 Production values are not to be invented. When the user confirms domains, configure DNS/TLS for the site and API host, then update exact-origin allowlists and environment config.

@@ -144,3 +144,6 @@ vite.config.ts.timestamp-*
 
 # Astro generated files
 .astro/
+worker/wrangler.preview.jsonc
+worker/wrangler.production.jsonc
+worker/registry/content-articles.sql

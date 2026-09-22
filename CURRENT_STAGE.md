@@ -7,15 +7,42 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 10 - Search / Pagefind.
+Stage 11 - Deploy adapter.
 
 ## Status
 `complete`
 
-Stage 10 implementation has been verified locally in `codex/stage-10-search`, based on accepted Stage 9 commit `9e978956d056053d37e0592f7e87d73dcdaf0a33`.
-Local completion does not imply production Cloudflare Access policy readiness.
+Stage 11 implementation has been verified locally in `codex/stage-11-deploy-adapter`, based on accepted Stage 10 commit `641ae16c85d08aa36693a5ce4c33653faf5cf23a`.
+Local completion does not imply real Cloudflare/DNS/Access production readiness.
 
 ## Verified checks
+### Stage 11 (2026-09-22)
+- `pnpm test` - PASS: 12 files / 76 tests.
+- `pnpm check` - PASS: content validation, Astro typecheck (0 errors/warnings/hints) and architecture boundary check.
+- `pnpm deploy:preview:build && pnpm deploy:preview:validate` - PASS: preview produces static artifacts with `X-Robots-Tag: noindex, nofollow`, a disallowing `robots.txt`, redirects, security headers and Pagefind output.
+- `pnpm deploy:production:build && pnpm deploy:validate` - PASS: production static build creates Pagefind, Cloudflare Pages `_redirects`/`_headers`, deployment manifest and transactional runtime-registry SQL. Local HTTP verification confirms canonical article 200, historical redirect 301 + Location, `/blog/page/1/` 301 normalization, project 404 and immutable hashed-asset cache contract.
+- `pnpm worker:validate` - PASS: published runtime registry generation and Worker foundation regression.
+- `pnpm seo:validate`, `pnpm theme:validate`, `pnpm search:validate`, `pnpm reads:validate` - PASS: accepted SEO/theme/Pagefind/reads production-build regressions.
+- `git diff 641ae16c85d08aa36693a5ce4c33653faf5cf23a -- worker/migrations` - PASS: empty; Stage 11 adds no migration and never rewrites `0001`-`0003`.
+
+### Exact SPEC 93.11 gate mapping
+| Gate | Result | Evidence |
+| --- | --- | --- |
+| Canonical URL -> 200 | PASS locally | deploy adapter HTTP validation serves the canonical article from production `dist/` |
+| Old URL -> 301 + Location | PASS locally | generated `_redirects` consumes `redirects.json`; historical URL is verified over HTTP |
+| Unknown -> 404 | PASS locally | local adapter returns project `404.html` with 404 status |
+| `/page/1/` normalized | PASS locally | generated redirects cover blog/category/author page-one forms; blog path is verified over HTTP |
+| Non-canonical host -> canonical host | BLOCKED | requires final DNS/TLS/canonical host configuration; Q001 remains open |
+| HTTP -> HTTPS | BLOCKED | requires real hosting/CDN HTTPS configuration and external HTTP probe |
+| Mutation API -> no-store | PASS locally | existing Worker integration tests verify mutation/error `no-store`; adapter keeps API separate from static output |
+| Hashed asset cache | PASS locally | `_headers` declares immutable cache for `/_astro/*`; local HTTP adapter verifies a generated fingerprinted JS asset |
+
+### Stage 11 implementation notes
+- `pnpm build` now produces deployment artifacts after Astro and Pagefind: Cloudflare Pages-compatible `dist/_redirects`, `dist/_headers` and `dist/deployment-manifest.json`.
+- Preview and production builds are explicit (`pnpm deploy:preview:build`, `pnpm deploy:production:build`). Preview is noindex by response header and `robots.txt`; production retains sitemap and adds HSTS only in production artifacts.
+- Added untracked preview/production Wrangler templates and documented ordered external steps: build -> migrations -> transactional registry sync -> compatible Worker -> static `dist/` -> real-host verification. Runtime registry SQL upserts current articles and disables removed ones in one transaction.
+- Added pinned Wrangler CLI for deploy commands. Actual Worker/D1/Pages deployment remains intentionally unexecuted without external configuration. No Stage 12 work and no migrations.
+
 ### Stage 10 (2026-09-22)
 - `pnpm test` - PASS: 12 files / 76 tests. Search eligibility coverage verifies published content is eligible and draft, scheduled and `noindex` entries are excluded.
 - `pnpm check` - PASS: content validation, Astro typecheck (0 errors/warnings/hints) and architecture boundary check.
@@ -257,7 +284,7 @@ The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks 
 - Stage 1-6 regression checks continue to pass.
 
 ## Blockers
-Local Stage 9 implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED pending external authorization/configuration outside the repository:
+Local Stage 11 implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED pending external authorization/configuration outside the repository:
 - Cloudflare account permission to create/manage Workers and D1;
 - real preview and production D1 database IDs/names;
 - Worker deployment target for `tragarze-api`;

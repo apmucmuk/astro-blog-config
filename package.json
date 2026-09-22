@@ -6,7 +6,7 @@
   "packageManager": "pnpm@11.19.0",
   "scripts": {
     "dev": "node scripts/run-astro.mjs dev",
-    "build": "pnpm content:validate && node scripts/run-astro.mjs build && pnpm search:index",
+    "build": "pnpm content:validate && node scripts/run-astro.mjs build && pnpm search:index && pnpm deploy:artifacts",
     "preview": "node scripts/run-astro.mjs preview",
     "typecheck": "node scripts/run-astro.mjs check",
     "content:validate": "node scripts/validate-content.mjs",
@@ -15,7 +15,17 @@
     "reads:validate": "node scripts/validate-reads-browser.mjs",
     "search:index": "node scripts/build-pagefind.mjs",
     "search:validate": "node scripts/validate-search-build.mjs",
+    "deploy:artifacts": "node scripts/generate-deploy-artifacts.mjs",
+    "deploy:validate": "pnpm worker:registry:sql && node scripts/validate-deploy-adapter.mjs",
+    "deploy:preview:validate": "pnpm worker:registry:sql && node scripts/validate-deploy-adapter.mjs preview",
+    "deploy:preview:build": "node scripts/build-deployment.mjs preview",
+    "deploy:production:build": "node scripts/build-deployment.mjs production",
     "worker:registry": "node scripts/generate-runtime-registry.mjs",
+    "worker:registry:sql": "node scripts/generate-runtime-registry-sql.mjs",
+    "worker:registry:sync:preview": "pnpm worker:registry:sql && node node_modules/wrangler/bin/wrangler.js d1 execute DB --config worker/wrangler.preview.jsonc --remote --file worker/registry/content-articles.sql",
+    "worker:registry:sync:production": "pnpm worker:registry:sql && node node_modules/wrangler/bin/wrangler.js d1 execute DB --config worker/wrangler.production.jsonc --remote --file worker/registry/content-articles.sql",
+    "worker:migrations:preview": "node node_modules/wrangler/bin/wrangler.js d1 migrations apply DB --config worker/wrangler.preview.jsonc --remote",
+    "worker:migrations:production": "node node_modules/wrangler/bin/wrangler.js d1 migrations apply DB --config worker/wrangler.production.jsonc --remote",
     "worker:validate": "pnpm worker:registry && node scripts/validate-worker-foundation.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
     "check": "pnpm content:validate && pnpm typecheck && pnpm check:architecture",
@@ -36,6 +46,7 @@
     "pagefind": "1.4.0",
     "playwright-core": "1.63.0",
     "typescript": "5.9.3",
-    "vitest": "5.0.0"
+    "vitest": "5.0.0",
+    "wrangler": "4.136.3"
   }
 }

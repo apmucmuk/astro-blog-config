@@ -73,6 +73,6 @@ const registryArticles = articles
   .sort((left, right) => left.siteId.localeCompare(right.siteId) || left.articleId.localeCompare(right.articleId));
 
 await mkdir(path.dirname(outputPath), { recursive: true });
-await writeFile(outputPath, `${JSON.stringify({ generatedAtMs: updatedAtMs, articles: registryArticles }, null, 2)}\n`);
+await writeFile(outputPath, `${JSON.stringify({ generatedAtMs: updatedAtMs, siteIds: [siteId], articles: registryArticles }, null, 2)}\n`);
 
 console.log(`Runtime registry generated: ${registryArticles.length} article(s).`);

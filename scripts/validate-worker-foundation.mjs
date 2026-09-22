@@ -83,6 +83,7 @@ assert(wrangler.includes('"ALLOWED_ORIGIN": "https://tragarze.pl"'), "Worker ALL
 
 const registry = JSON.parse(await read("worker/registry/content-articles.json"));
 assert(Array.isArray(registry.articles), "Runtime registry articles array is missing.");
+assert(Array.isArray(registry.siteIds) && registry.siteIds.includes("tragarze-pl"), "Runtime registry site identity is missing.");
 assert(registry.articles.some((article) => article.articleId === "art-tragarze-001"), "Published article registry row is missing.");
 assert(
   !registry.articles.some((article) => article.articleId === "art-tragarze-draft" || article.articleId === "art-tragarze-scheduled"),

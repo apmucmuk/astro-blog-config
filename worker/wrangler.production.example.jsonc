@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "REPLACE_WITH_PRODUCTION_WORKER_NAME",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "APP_ENV": "production",
+    "SITE_ID": "tragarze-pl",
+    "ALLOWED_ORIGIN": "REPLACE_WITH_PRODUCTION_SITE_ORIGIN",
+    "POPULARITY_WINDOW_DAYS": "7",
+    "VISITOR_COOKIE_NAME": "tragarze_vid",
+    "LOG_LEVEL": "info"
+  },
+  "d1_databases": [{ "binding": "DB", "database_name": "REPLACE_WITH_PRODUCTION_D1_NAME", "database_id": "REPLACE_WITH_PRODUCTION_D1_ID", "migrations_dir": "migrations" }]
+}
