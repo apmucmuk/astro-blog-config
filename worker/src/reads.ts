@@ -1,9 +1,11 @@
 import { ApiError } from "../../src/core/api";
-import { ensureArticleStats } from "./d1";
+import { assertRuntimeArticleEnabled, ensureArticleStats } from "./d1";
 import type { D1Database } from "./types";
 
 export async function recordRead(db: D1Database, siteId: string, articleId: string, now = Date.now()) {
   if (!db.batch) throw new ApiError(500, "INTERNAL_ERROR", "Atomic storage is unavailable.");
+  const article = await assertRuntimeArticleEnabled(db, siteId, articleId);
+  if (article.publishAtMs > now) throw new ApiError(404, "NOT_FOUND", "Article is not published.");
   await ensureArticleStats(db, siteId, articleId, now);
   const day = new Date(now).toISOString().slice(0, 10);
   const results = await db.batch([

@@ -21,9 +21,8 @@ import {
 } from "./responses";
 import type { Env } from "./types";
 import { parseReadInput } from "../../src/core/api/reads";
-import { runtimeConfig } from "../../src/project/runtime.config";
 import { recordRead } from "./reads";
-import { getStats } from "./stats";
+import { statsResponse } from "./stats-cache";
 import { requireReadCapacity } from "./read-limit";
 import { getOptionalVisitorIdentity, getOrCreateVisitorIdentity } from "./visitor";
 
@@ -102,9 +101,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (url.pathname === "/v1/stats") {
     return request.method === "GET"
-      ? jsonResponse(await getStats(env.DB, env.SITE_ID, Number(env.POPULARITY_WINDOW_DAYS), runtimeConfig.ratingPriorWeight), {
-          headers: { "Cache-Control": `public, max-age=${runtimeConfig.statsCacheSeconds}`, Vary: "Origin" },
-        })
+      ? await statsResponse(request, env)
       : methodNotAllowed(mutation);
   }
 

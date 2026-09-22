@@ -103,6 +103,18 @@ Initial numeric thresholds are deployment configuration and should be conservati
 
 ## 10. Atomic D1 mutations
 
+Stage 8 read deployment uses the `READ_RATE_LIMITER` Worker binding (`limit({key})` returning `success`).
+Configure a distinct rate-limit namespace per environment and its `simple.limit` / `simple.period` in deployment configuration after Q004 is resolved. No production namespace ID is stored here.
+Reference: https://developers.cloudflare.com/workers/runtime-apis/bindings/rate-limit/
+
+The key contains only site/article/anonymous visitor identity. It is transient abuse-control state, never a D1 read history.
+Development without the binding uses a bounded, expiring in-memory one-minute limiter; `RATE_LIMIT_READS` overrides its development threshold.
+Preview/production without the binding fail closed with 503/no-store. This local adapter does not claim distributed production enforcement.
+The browser dedup default is 86400 seconds in `src/project/runtime.config.ts`; it is independent of the provider's short abuse-control window.
+Deployers must keep the generated browser policy and this shared project constant aligned when changing the dedup window.
+
+`GET /v1/stats` uses the Worker Cache API when available, with project-owned 3600-second freshness. Cache keys isolate site/environment/window/prior; cached responses contain no cookie or personalized state. Cache failure falls back to D1. Mutation responses never use this cache.
+
 Where a source mutation changes an aggregate, update them in one D1 transaction/batch strategy supported by the deployed runtime. Examples:
 - accepted qualified read -> all-time stats + daily bucket;
 - rating create/change -> vote row + rating aggregate delta;

@@ -1,0 +1,11 @@
+---
+import BlogListing from "@project/BlogListing.astro";
+import { buildListing, listingPageSize } from "@project/listing";
+import { projectConfig } from "@project/site.config";
+export async function getStaticPaths() {
+  const { entries } = await buildListing();
+  const pages = Math.ceil(entries.filter((entry) => entry.locale === projectConfig.locale).length / listingPageSize);
+  return Array.from({ length: Math.max(0, pages - 1) }, (_, index) => ({ params: { page: String(index + 2) } }));
+}
+---
+<BlogListing page={Number(Astro.params.page)} />

@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it } from "vitest";
 import { recordRead } from "./reads";
 import { getStats } from "./stats";
 import worker from "./index";
+import { statsResponse } from "./stats-cache";
+import { requireReadCapacity } from "./read-limit";
 
 const databases = [];
 function database() {
@@ -91,6 +93,58 @@ describe("reads with real SQLite transactions and accepted migrations", () => {
     expect(sql.prepare("SELECT COUNT(*) n FROM article_stats").get().n).toBe(0);
     await expect(getStats(db, "site", 0)).rejects.toThrow();
     await expect(getStats(db, "site", 7, 0)).rejects.toThrow();
+  });
+  it("rejects future registry entries without writes", async () => {
+    const { db, sql } = database();
+    sql.exec("UPDATE content_articles SET publish_at_ms=9999999999999 WHERE article_id='a'");
+    await expect(recordRead(db, "site", "a")).rejects.toMatchObject({ code: "NOT_FOUND" });
+    expect(sql.prepare("SELECT COUNT(*) n FROM article_stats").get().n).toBe(0);
+    expect((await getStats(db, "site", 7)).articles.map((row) => row.id)).toEqual(["b"]);
+  });
+  it("keeps rating/comments unchanged while incrementing reads", async () => {
+    const { db, sql } = database();
+    await recordRead(db, "site", "a");
+    sql.exec("UPDATE article_stats SET rating_sum=9, rating_count=2, comments_count=3");
+    await Promise.all([recordRead(db, "site", "a"), recordRead(db, "site", "a")]);
+    expect(sql.prepare("SELECT reads, rating_sum, rating_count, comments_count FROM article_stats").get()).toEqual({ reads: 3, rating_sum: 9, rating_count: 2, comments_count: 3 });
+  });
+  it("uses Bayesian scores only for ordering and deterministic tie breakers", async () => {
+    const { db, sql } = database();
+    await recordRead(db, "site", "a"); await recordRead(db, "site", "b");
+    sql.exec("UPDATE article_stats SET rating_sum=5,rating_count=1 WHERE article_id='a'; UPDATE article_stats SET rating_sum=450,rating_count=100 WHERE article_id='b'");
+    const snapshot = await getStats(db, "site", 7);
+    expect(snapshot.articles.find((row) => row.id === "a").ratingValue).toBe(5);
+    expect(snapshot.articles.find((row) => row.id === "b").ratingValue).toBe(4.5);
+    expect(snapshot.rankings.rating).toEqual(["a", "b"]);
+    sql.exec("UPDATE article_stats SET rating_sum=4,rating_count=1; UPDATE content_articles SET publish_at_ms=1");
+    expect((await getStats(db, "site", 7)).rankings.rating).toEqual(["a", "b"]);
+  });
+});
+
+describe("snapshot cache and transient limiting", () => {
+  it("reuses a non-personalized cached snapshot and isolates site keys", async () => {
+    const { env, db } = database();
+    const saved = new Map();
+    const cache = { async match(request) { return saved.get(request.url)?.clone(); }, async put(request, response) { saved.set(request.url, response); } };
+    const request = new Request("https://api.test/v1/stats?site_id=other", { headers: { Cookie: "visitor=private" } });
+    const first = await statsResponse(request, env, cache);
+    await recordRead(db, "site", "a");
+    const second = await statsResponse(request, env, cache);
+    expect(await second.json()).toEqual(await first.json());
+    expect(second.headers.get("Set-Cookie")).toBeNull();
+    expect(saved.size).toBe(1);
+    await statsResponse(request, { ...env, SITE_ID: "other" }, cache);
+    expect(saved.size).toBe(2);
+    const fresh = await statsResponse(request, env, { async match() { throw Error("offline"); }, async put() { throw Error("offline"); } });
+    expect((await fresh.json()).articles.find((row) => row.id === "a").reads).toBe(1);
+  });
+  it("limits concurrent repeats without persistent history, then expires", async () => {
+    const { env, sql } = database();
+    const local = { ...env, READ_RATE_LIMITER: undefined, RATE_LIMIT_READS: "1" };
+    const results = await Promise.allSettled(Array.from({ length: 10 }, () => requireReadCapacity(local, "test-visitor", "a", 100000)));
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    await expect(requireReadCapacity(local, "test-visitor", "a", 160000)).resolves.toBeUndefined();
+    expect(sql.prepare("SELECT COUNT(*) n FROM article_stats").get().n).toBe(0);
   });
 });
 

@@ -12,6 +12,7 @@
     "content:validate": "node scripts/validate-content.mjs",
     "seo:validate": "node scripts/validate-seo-build.mjs",
     "theme:validate": "node scripts/validate-theme-build.mjs && node scripts/validate-theme-browser.mjs",
+    "reads:validate": "node scripts/validate-reads-browser.mjs",
     "worker:registry": "node scripts/generate-runtime-registry.mjs",
     "worker:validate": "pnpm worker:registry && node scripts/validate-worker-foundation.mjs",
     "check:architecture": "node scripts/check-architecture.mjs",
