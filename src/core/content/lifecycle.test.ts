@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { filterPublished, isPublished } from "./lifecycle";
+import { filterPublished, isPublished, isSearchIndexable } from "./lifecycle";
 
 const now = new Date("2026-09-15T10:00:00Z");
 
@@ -20,5 +20,12 @@ describe("content lifecycle", () => {
     ];
 
     expect(filterPublished(entries, now)).toHaveLength(1);
+  });
+
+  it("indexes only published and indexable entries", () => {
+    expect(isSearchIndexable({ data: { publishDate: "2026-09-01T10:00:00Z" } }, now)).toBe(true);
+    expect(isSearchIndexable({ data: { draft: true, publishDate: "2026-09-01T10:00:00Z" } }, now)).toBe(false);
+    expect(isSearchIndexable({ data: { publishDate: "2099-01-01T10:00:00Z" } }, now)).toBe(false);
+    expect(isSearchIndexable({ data: { noindex: true, publishDate: "2026-09-01T10:00:00Z" } }, now)).toBe(false);
   });
 });

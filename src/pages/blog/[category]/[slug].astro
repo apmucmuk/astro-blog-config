@@ -1,6 +1,6 @@
 ---
 import { getCollection, render } from "astro:content";
-import { filterPublished } from "@core/content/lifecycle";
+import { filterPublished, isSearchIndexable } from "@core/content/lifecycle";
 import { articleCanonical, hreflangLinks } from "@core/seo/hreflang";
 import { blogPostingJsonLd, breadcrumbJsonLd, seoMetadata } from "@core/seo/metadata";
 import { personPath } from "@core/routing/routes";
@@ -37,6 +37,7 @@ export async function getStaticPaths() {
 }
 
 const { article, articles, category, people } = Astro.props;
+const searchIndexable = isSearchIndexable(article);
 const { Content } = await render(article);
 const canonical = articleCanonical({
   locale: article.data.locale,
@@ -113,7 +114,7 @@ const jsonLd = [
     <link rel="alternate" hreflang="x-default" href={metadata.canonical} />
     {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}
   </Fragment>
-  <article data-stats-batch data-api-url={projectConfig.apiUrl}>
+  <article data-stats-batch data-api-url={projectConfig.apiUrl} data-pagefind-body={searchIndexable ? true : undefined} data-pagefind-ignore={searchIndexable ? undefined : true}>
     <header class="article-header article-container">
       <nav class="breadcrumb" aria-label="Breadcrumbs">
         {breadcrumbs.map((item, index) => (
@@ -127,8 +128,8 @@ const jsonLd = [
       </div>
       <p data-stats-id={article.data.id}><span hidden>Czytelnicy: <span data-reads></span></span></p>
       <div class="hero__inner">
-        <h1>{article.data.title}</h1>
-        <p class="lede">{article.data.description}</p>
+        <h1 data-pagefind-meta="title">{article.data.title}</h1>
+        <p class="lede" data-pagefind-meta="description">{article.data.description}</p>
       </div>
       <img
         class="article-hero"

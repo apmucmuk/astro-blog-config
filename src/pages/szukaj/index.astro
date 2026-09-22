@@ -1,0 +1,37 @@
+---
+import { seoMetadata } from "@core/seo/metadata";
+import { navigation } from "@project/navigation";
+import { projectConfig } from "@project/site.config";
+import BaseLayout from "@theme/layouts/BaseLayout.astro";
+
+const metadata = seoMetadata({
+  title: `Szukaj - ${projectConfig.name}`,
+  description: "Wyszukaj opublikowane poradniki tragarze.pl.",
+  pathname: "/szukaj/",
+  siteUrl: projectConfig.siteUrl,
+  noindex: true,
+});
+---
+
+<BaseLayout title={metadata.title} description={metadata.description} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
+  <Fragment slot="head">
+    <meta name="robots" content={metadata.robots} />
+  </Fragment>
+  <section class="page-section" data-search-root>
+    <div class="article-container">
+      <p class="eyebrow">Baza wiedzy</p>
+      <h1>Szukaj poradników</h1>
+      <form class="search-form" role="search">
+        <label for="search-query">Szukaj w opublikowanych artykułach</label>
+        <div class="search-form__controls">
+          <input id="search-query" name="q" type="search" inputmode="search" autocomplete="off" maxlength="120" />
+          <button type="submit">Szukaj</button>
+        </div>
+      </form>
+      <p class="search-status" aria-live="polite" data-search-status>Wpisz frazę, aby rozpocząć wyszukiwanie.</p>
+      <ol class="search-results" data-search-results></ol>
+      <noscript><p>Wyszukiwanie jest dostępne po włączeniu JavaScript. Nadal możesz przeglądać <a href="/blog/">wszystkie poradniki</a>.</p></noscript>
+    </div>
+  </section>
+</BaseLayout>
+<script is:inline type="module" src="/scripts/pagefind-search.js"></script>

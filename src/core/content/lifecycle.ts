@@ -1,6 +1,7 @@
 export type PublishableEntry = {
   data: {
     draft?: boolean;
+    noindex?: boolean;
     publishDate: Date | string;
   };
 };
@@ -18,4 +19,8 @@ export function filterPublished<TEntry extends PublishableEntry>(
   now = new Date(),
 ): TEntry[] {
   return entries.filter((entry) => isPublished(entry, now));
+}
+
+export function isSearchIndexable(entry: PublishableEntry, now = new Date()): boolean {
+  return isPublished(entry, now) && entry.data.noindex !== true;
 }

@@ -7,15 +7,42 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 9 - Admin + Cloudflare Access.
+Stage 10 - Search / Pagefind.
 
 ## Status
 `complete`
 
-Stage 9 implementation has been verified locally in `codex/stage-9-admin-access`, based on accepted Stage 8 commit `dd43bebe4531838ef762f26f30edfbed0e37787d`.
-Local completion does not imply production Cloudflare Access policy readiness. Stage 10 has not been started.
+Stage 10 implementation has been verified locally in `codex/stage-10-search`, based on accepted Stage 9 commit `9e978956d056053d37e0592f7e87d73dcdaf0a33`.
+Local completion does not imply production Cloudflare Access policy readiness.
 
 ## Verified checks
+### Stage 10 (2026-09-22)
+- `pnpm test` - PASS: 12 files / 76 tests. Search eligibility coverage verifies published content is eligible and draft, scheduled and `noindex` entries are excluded.
+- `pnpm check` - PASS: content validation, Astro typecheck (0 errors/warnings/hints) and architecture boundary check.
+- `pnpm build` - PASS: production build now runs Pagefind automatically after Astro SSG. Pagefind v1.4.0 indexed one Polish published article and generated `dist/pagefind/`.
+- `pnpm search:validate` - PASS: validates production Pagefind module/index, noindex search surface, article metadata, no-JS fallback and a real production-preview browser query returning only `/blog/poradniki/jak-przygotowac-przeprowadzke/`; validates keyboard focus and 320px width.
+- `pnpm worker:validate` - PASS: Worker/runtime registry regression.
+- `pnpm seo:validate` - PASS: SEO regression.
+- `pnpm theme:validate` - PASS: theme/browser/no-JS/focus regression.
+- `pnpm reads:validate` - PASS: Stage 8 production-browser regression (qualification, dedup, listing, fallback and responsive widths).
+- `git diff 9e978956d056053d37e0592f7e87d73dcdaf0a33 -- worker/migrations` - PASS: empty; Search uses no D1 migration.
+
+### Exact SPEC 93.10 gate mapping
+| Gate | Result | Evidence |
+| --- | --- | --- |
+| Published/indexable content only | PASS | `isSearchIndexable()` requires published lifecycle and excludes `noindex`; Pagefind sees only `data-pagefind-body` article regions |
+| Locale-aware | PASS | language derives from document/project locale; production Pagefind index is `pl` without CORE locale enum |
+| Draft/scheduled excluded | PASS | published static route generation plus lifecycle test and production search output |
+| Search-result URL non-indexable | PASS | static `/szukaj/` has `noindex,follow`; query state remains on this non-indexable surface |
+| Index automated in build pipeline | PASS | `pnpm build` executes `pnpm search:index` after Astro SSG |
+| Search failure preserves navigation | PASS | Pagefind is lazy optional JavaScript; no-JS and failure states retain normal page/navigation access |
+
+### Stage 10 implementation notes
+- Added Pagefind v1.4.0 as the single static search engine. The production build creates `dist/pagefind/` after Astro output; no D1/Worker search index, SSR, migrations or second backend were added.
+- Added noindex `/szukaj/` with an accessible form, live status, keyboard focus and mobile-safe layout. Its standalone static module loads Pagefind only after an actual query. Search failure has a calm fallback and no-JS retains a link to the Blog.
+- Only article content marked `data-pagefind-body` is indexed; published title/description metadata and canonical article URL are emitted for results. No search results can include listing, `/page/1/`, admin or service URLs because they have no Pagefind body marker.
+- Added an explicit reusable content lifecycle predicate for search eligibility and a production browser/index gate. No Stage 11 work and no migrations.
+
 ### Stage 9 (2026-09-22)
 - `pnpm test` - PASS: 12 files / 75 tests. Stage 9 coverage includes real RS256 Access assertion verification, missing/malformed/tampered/expired/wrong-audience rejection, unavailable Access/JWKS fail-closed behavior, actual `/admin/api/*` boundary, no-store mutation/auth errors, moderation queue filtering, physical spam removal and comment deletion not-found behavior.
 - `pnpm check` - PASS: content validation, Astro typecheck (0 errors/warnings/hints) and architecture boundary check.
