@@ -3,6 +3,8 @@ import {
   createComment,
   deleteComment,
   listComments,
+  listAdminComments,
+  purgeSpamComments,
   markHelpful,
   moderateComment,
   parseCreateCommentRequest,
@@ -62,6 +64,15 @@ class CommentsDb implements D1Database {
   }
   all(query: string, values: unknown[]): Row[] {
     if (!query.includes("FROM comments")) return [];
+    if (query.includes("WHERE site_id = ? AND status = ?")) {
+      const siteId = values[0] as string;
+      const status = values[1] as string;
+      const limit = values.at(-1) as number;
+      return [...this.comments.values()]
+        .filter((row) => row.site_id === siteId && row.status === status)
+        .sort((a, b) => b.created_at_ms - a.created_at_ms || String(b.id).localeCompare(String(a.id)))
+        .slice(0, limit);
+    }
     const siteId = values[0] as string;
     const articleId = values[1] as string;
     const excluded = new Set<string>();
@@ -125,6 +136,10 @@ class CommentsDb implements D1Database {
       return;
     }
     if (query.startsWith("DELETE FROM comments")) {
+      if (query.includes("site_id = ? AND status = 'spam'")) {
+        for (const [id, row] of this.comments) if (row.site_id === values[0] && row.status === "spam") this.comments.delete(id);
+        return;
+      }
       const row = this.comments.get(values[0] as string);
       if (row?.status === "published") this.stats.get(`${row.site_id}:${row.article_id}`)!.comments_count -= 1;
       this.comments.delete(values[0] as string);
@@ -222,6 +237,7 @@ describe("comments stage 7", () => {
     expect(pending2.status).toBe("pending");
     await deleteComment(local.DB, [...(local.DB as CommentsDb).comments.keys()][0]);
     expect((local.DB as CommentsDb).stats.get("tragarze-pl:art-tragarze-001")?.comments_count).toBe(0);
+    await expect(deleteComment(local.DB, "missing")).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 
   it("supports helpful and report without changing comments_count", async () => {
@@ -239,5 +255,20 @@ describe("comments stage 7", () => {
     expect(row.helpful_count).toBe(1);
     expect(row.reports_count).toBe(1);
     expect((local.DB as CommentsDb).stats.get("tragarze-pl:art-tragarze-001")?.comments_count).toBe(1);
+  });
+
+  it("provides an admin queue, status filtering and physical spam purge", async () => {
+    const local = fresh();
+    const pending = await createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Pending", body: "https://one.test", turnstileToken: "test-pass" }, 10);
+    await createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Spam", body: "casino", turnstileToken: "test-pass" }, 20);
+    const pendingQueue = await listAdminComments(local.DB, local, new URL("https://api.test/admin/api/comments?status=pending"));
+    expect(pendingQueue.items).toHaveLength(1);
+    expect(pendingQueue.items[0]).toMatchObject({ name: "Pending", status: "pending", articleId: "art-tragarze-001" });
+    expect(pending.status).toBe("pending");
+    await expect(listAdminComments(local.DB, local, new URL("https://api.test/admin/api/comments?status=nope"))).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(listAdminComments(local.DB, local, new URL("https://api.test/admin/api/comments?siteId=other"))).rejects.toMatchObject({ code: "NOT_FOUND" });
+    const result = await purgeSpamComments(local.DB, local.SITE_ID);
+    expect(result.deleted).toBe(0);
+    expect([...((local.DB as CommentsDb).comments.values())].some((comment) => comment.status === "spam")).toBe(false);
   });
 });

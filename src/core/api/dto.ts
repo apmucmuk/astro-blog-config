@@ -74,3 +74,15 @@ export type ModerateCommentRequest = {
   helpfulCount?: number;
   linkRel?: CommentLinkRel | null;
 };
+
+export type AdminComment = PublicComment & {
+  articleId: string;
+  status: CommentStatus;
+  reportsCount: number;
+  moderationReason: string | null;
+};
+
+export type AdminCommentsResponse = {
+  items: AdminComment[];
+  nextCursor: string | null;
+};

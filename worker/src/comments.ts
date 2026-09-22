@@ -5,6 +5,8 @@ import {
   requireNonEmptyString,
   type CommentLinkRel,
   type CommentStatus,
+  type AdminComment,
+  type AdminCommentsResponse,
   type CommentsListResponse,
   type CreateCommentRequest,
   type CreateCommentResponse,
@@ -184,6 +186,16 @@ export function mapPublicComment(row: CommentRow): PublicComment {
   };
 }
 
+function mapAdminComment(row: CommentRow): AdminComment {
+  return {
+    ...mapPublicComment(row),
+    articleId: row.article_id,
+    status: row.status,
+    reportsCount: row.reports_count,
+    moderationReason: row.moderation_reason,
+  };
+}
+
 async function getComment(db: D1Database, id: string): Promise<CommentRow | null> {
   return db
     .prepare(
@@ -245,6 +257,36 @@ export async function listComments(db: D1Database, env: Env, url: URL): Promise<
     items,
     nextCursor: last ? encodeCursor({ createdAtMs: last.created_at_ms, id: last.id }) : null,
   };
+}
+
+export async function listAdminComments(db: D1Database, env: Env, url: URL): Promise<AdminCommentsResponse> {
+  const status = url.searchParams.get("status") ?? "pending";
+  if (!["published", "pending", "spam"].includes(status)) {
+    throw new ApiError(400, "BAD_REQUEST", "Invalid comment status.");
+  }
+  const requestedSite = url.searchParams.get("siteId");
+  if (requestedSite && requestedSite !== env.SITE_ID) {
+    throw new ApiError(404, "NOT_FOUND", "Site is not available.");
+  }
+  const limit = Math.min(Number.parseInt(url.searchParams.get("limit") ?? "20", 10) || 20, 50);
+  const cursor = decodeCursor(url.searchParams.get("cursor"));
+  const cursorClause = cursor ? "AND (created_at_ms < ? OR (created_at_ms = ? AND id < ?))" : "";
+  const params: unknown[] = [env.SITE_ID, status];
+  if (cursor) params.push(cursor.createdAtMs, cursor.createdAtMs, cursor.id);
+  params.push(limit + 1);
+  const result = await db.prepare(
+    `SELECT id, site_id, article_id, parent_id, author_name, body, status, moderation_reason,
+            reports_count, helpful_count, link_rel, created_at_ms
+     FROM comments
+     WHERE site_id = ? AND status = ?
+     ${cursorClause}
+     ORDER BY created_at_ms DESC, id DESC
+     LIMIT ?`,
+  ).bind(...params).all<CommentRow>();
+  const rows = result.results ?? [];
+  const items = rows.slice(0, limit).map(mapAdminComment);
+  const last = rows.length > limit ? rows[limit - 1] : null;
+  return { items, nextCursor: last ? encodeCursor({ createdAtMs: last.created_at_ms, id: last.id }) : null };
 }
 
 export async function createComment(db: D1Database, env: Env, request: CreateCommentRequest, nowMs = Date.now()): Promise<CreateCommentResponse> {
@@ -334,7 +376,17 @@ export async function moderateComment(db: D1Database, id: string, patch: Moderat
 }
 
 export async function deleteComment(db: D1Database, id: string): Promise<void> {
-  await db.prepare("DELETE FROM comments WHERE id = ?").bind(id).run();
+  if (!(await getComment(db, id))) {
+    throw new ApiError(404, "NOT_FOUND", "Comment not found.");
+  }
+  const result = await db.prepare("DELETE FROM comments WHERE id = ?").bind(id).run();
+  if (!result.success) throw new ApiError(500, "INTERNAL_ERROR", "Comment deletion failed.");
+}
+
+export async function purgeSpamComments(db: D1Database, siteId: string): Promise<{ deleted: number }> {
+  const result = await db.prepare("DELETE FROM comments WHERE site_id = ? AND status = 'spam'").bind(siteId).run<{ changes?: number }>();
+  if (!result.success) throw new ApiError(500, "INTERNAL_ERROR", "Spam purge failed.");
+  return { deleted: Number((result.meta as { changes?: number }).changes ?? 0) };
 }
 
 export async function markHelpful(db: D1Database, id: string): Promise<PublicComment> {

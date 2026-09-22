@@ -89,6 +89,12 @@ Browser mutation requests with missing or invalid Origin are rejected by default
 
 Admin endpoints require Cloudflare Access identity verification plus allowed Origin, expected Content-Type and runtime validation. Do not treat the presence of an Access header as sufficient; validate issuer/audience/signature/expiry according to the chosen Access JWT mechanism.
 
+## 7.1 Admin Cloudflare Access deployment
+
+Before exposing `/admin/` or `/admin/api/*`, create a Cloudflare Access application that protects both paths in preview and production. Its application audience tag becomes `CF_ACCESS_AUD`; its team domain becomes `CF_ACCESS_TEAM_DOMAIN`. The Worker validates the `CF-Access-Jwt-Assertion` itself against `https://{CF_ACCESS_TEAM_DOMAIN}/cdn-cgi/access/certs`, requiring RS256 signature, issuer, audience, expiry and `nbf` when present.
+
+Use an Access policy for the intended administrators. Do not add a bypass policy for production. `/admin/` is a static UI surface and is protected at the Cloudflare edge; `/admin/api/*` is protected twice, at Access and at the Worker boundary. Local development cannot demonstrate a real Access login without this external configuration.
+
 ## 8. Turnstile
 
 Use separate production/test configuration. Local/CI tests must use documented Turnstile test keys or mocked boundary adapters; never put production secrets into test fixtures.

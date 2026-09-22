@@ -7,15 +7,42 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 8 - Reads + Stats.
+Stage 9 - Admin + Cloudflare Access.
 
 ## Status
 `complete`
 
-Stage 8 implementation has been verified locally in `codex/stage-8-reads-stats`, based on accepted Stage 7 commit `edf65c40e42d2daafc134b9a554d493aed3536ef`.
-Local completion does not imply production Cloudflare readiness. Stage 9 has not been started.
+Stage 9 implementation has been verified locally in `codex/stage-9-admin-access`, based on accepted Stage 8 commit `dd43bebe4531838ef762f26f30edfbed0e37787d`.
+Local completion does not imply production Cloudflare Access policy readiness. Stage 10 has not been started.
 
 ## Verified checks
+### Stage 9 (2026-09-22)
+- `pnpm test` - PASS: 12 files / 75 tests. Stage 9 coverage includes real RS256 Access assertion verification, missing/malformed/tampered/expired/wrong-audience rejection, unavailable Access/JWKS fail-closed behavior, actual `/admin/api/*` boundary, no-store mutation/auth errors, moderation queue filtering, physical spam removal and comment deletion not-found behavior.
+- `pnpm check` - PASS: content validation, Astro typecheck (0 errors/warnings/hints) and architecture boundary check.
+- `pnpm build` - PASS: generated static `/admin/index.html` minimal moderation UI alongside accepted static output.
+- `pnpm worker:validate` - PASS: registry and Worker foundation regression.
+- `pnpm seo:validate` - PASS: SEO regression.
+- `pnpm theme:validate` - PASS: theme/browser/no-JS/focus regression.
+- `pnpm reads:validate` - PASS after build completed: Stage 8 browser regression (qualified reads, listing snapshots, URL state, fallback and no-JS) remains valid.
+- `git diff dd43bebe4531838ef762f26f30edfbed0e37787d -- worker/migrations` - PASS: empty; no migration was required and accepted migrations `0001`-`0003` are unchanged.
+
+### Exact SPEC 93.9 gate mapping
+| Gate | Result | Evidence |
+| --- | --- | --- |
+| Admin API only behind protected path | PASS locally | `/admin/api/*` calls `requireAccess()` before D1; missing assertion returns 401 and admin auth errors are no-store |
+| Access policy / JWT boundary | PASS locally | RS256 WebCrypto verification requires Cloudflare issuer, audience, expiry, nbf and JWKS key ID; invalid or unavailable verification fails closed |
+| Moderation actions work | PASS | status/reports/helpful/link-rel PATCH, queue filtering and existing published invariants are tested |
+| Physical delete where specified | PASS | DELETE removes row; spam purge deletes spam rows; D1 comments_count trigger regression remains covered |
+| Spam restore/purge behavior | PASS | PATCH permits spam-to-pending/published only when published invariant holds; explicit purge removes spam physically |
+| Real deployed Cloudflare Access policy | BLOCKED | requires account authorization, preview/production Access applications, policy, audience tag and team domain; no credentials or values were invented |
+
+### Stage 9 implementation notes
+- Added minimal static `/admin/` moderation UI with pending/published/spam queues and publish/pending/spam/delete/purge actions. It never renders comment body as HTML.
+- Added protected `GET /admin/api/comments`, retained protected PATCH/DELETE routes, and added `POST /admin/api/comments/spam/purge`; no user accounts, password/session storage, custom JWT issuer or new D1 tables were added.
+- Added `worker/src/access.ts`: verifies `CF-Access-Jwt-Assertion` via Cloudflare Access JWKS using RS256 signature, exact issuer/audience, expiration and optional `nbf`. Cached public keys expire after one hour; JWKS failure returns safe 503.
+- `docs/CLOUDFLARE_SETUP.md` now specifies the required Access application policy for `/admin/` and `/admin/api/*`, plus `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` deployment bindings. The static UI must be edge-protected by that external policy; Worker independently protects its API.
+- No Stage 10/Pagefind work and no migrations.
+
 ### Stage 8 (2026-09-22)
 - Restored clean workspace at checkpoint `157a506d46a554e00b5796fa315a13fe955f108b`; local and remote HEAD matched. Preserved the existing implementation.
 - `pnpm test` - PASS: 11 files / 70 tests. Includes real SQLite execution of accepted migrations and atomic batches, 50 concurrent/repeated reads, UTC midnight, rollback on daily-write failure, unchanged comments/rating aggregates, invalid/disabled/future articles, Origin/errors/no-store, public snapshot rankings, cache isolation/fallback, transient limiter concurrency/expiry, browser detector unit tests, global pagination over 45 entries and authored-vs-contributor filtering.
@@ -203,11 +230,12 @@ The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks 
 - Stage 1-6 regression checks continue to pass.
 
 ## Blockers
-Local Stage 8 implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED pending external authorization/configuration outside the repository:
+Local Stage 9 implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED pending external authorization/configuration outside the repository:
 - Cloudflare account permission to create/manage Workers and D1;
 - real preview and production D1 database IDs/names;
 - Worker deployment target for `tragarze-api`;
 - `READ_RATE_LIMITER` binding, environment-specific namespace and confirmed thresholds (Q004); production read counting deliberately fails closed until provisioned;
+- preview and production Cloudflare Access applications/policies for `/admin/` and `/admin/api/*`, with exact `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD` bindings; deployed RS256/JWKS verification cannot be performed without them;
 - production/preview Turnstile site-key/secret provisioning policy and `TURNSTILE_SECRET_KEY` configured in Cloudflare secret storage (Q005 remains open);
 - exact confirmed production origins/domains if Q001 changes the provisional `https://tragarze.pl` / `https://api.tragarze.pl` defaults.
 

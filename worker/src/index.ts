@@ -2,12 +2,14 @@ import { ApiError, type HealthResponse } from "../../src/core/api";
 import {
   createComment,
   deleteComment,
+  listAdminComments,
   listComments,
   markHelpful,
   moderateComment,
   parseCreateCommentRequest,
   parseModerateCommentRequest,
   reportComment,
+  purgeSpamComments,
 } from "./comments";
 import { parseRatingRequest, getRating, submitRating } from "./rating";
 import {
@@ -24,6 +26,7 @@ import { parseReadInput } from "../../src/core/api/reads";
 import { recordRead } from "./reads";
 import { statsResponse } from "./stats-cache";
 import { requireReadCapacity } from "./read-limit";
+import { requireAccess } from "./access";
 import { getOptionalVisitorIdentity, getOrCreateVisitorIdentity } from "./visitor";
 
 function isMutation(method: string): boolean {
@@ -95,6 +98,10 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     requireMutationOrigin(request, env);
   }
 
+  if (url.pathname.startsWith("/admin/")) {
+    await requireAccess(request, env);
+  }
+
   if (url.pathname === "/health") {
     return request.method === "GET" || request.method === "HEAD" ? health(env) : methodNotAllowed(mutation);
   }
@@ -139,6 +146,14 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   }
 
   const adminCommentId = adminCommentMatch(url.pathname);
+  if (url.pathname === "/admin/api/comments") {
+    return request.method === "GET" ? jsonResponse(await listAdminComments(env.DB, env, url), { headers: { "Cache-Control": "no-store" } }) : methodNotAllowed(mutation);
+  }
+
+  if (url.pathname === "/admin/api/comments/spam/purge") {
+    return request.method === "POST" ? mutationJsonResponse(await purgeSpamComments(env.DB, env.SITE_ID)) : methodNotAllowed(mutation);
+  }
+
   if (adminCommentId) {
     if (request.method === "PATCH") {
       return mutationJsonResponse(await moderateComment(env.DB, adminCommentId, parseModerateCommentRequest(await readStrictJson(request))));
@@ -182,7 +197,8 @@ export default {
     try {
       return withCors(await handleRequest(request, env), request, env);
     } catch (error) {
-      return withCors(apiErrorResponse(error, isMutation(request.method)), request, env);
+      const isAdmin = new URL(request.url).pathname.startsWith("/admin/");
+      return withCors(apiErrorResponse(error, isMutation(request.method) || isAdmin), request, env);
     }
   },
 };
