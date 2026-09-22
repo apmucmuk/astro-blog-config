@@ -12,7 +12,4 @@ import { navigation } from "@project/navigation";
     <ul data-admin-list></ul>
   </section>
 </BaseLayout>
-<script>
-  import { mountModeration } from "@features/admin/moderation";
-  document.querySelectorAll<HTMLElement>("[data-admin]").forEach(mountModeration);
-</script>
+<script is:inline type="module" src="/scripts/admin-moderation.js"></script>

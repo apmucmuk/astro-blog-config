@@ -86,6 +86,15 @@ try {
   assert(await fallback.locator("[data-stats-list] a").count() > 0, "Failure preserves static links");
   assert.equal(await fallback.locator("select").inputValue(), "newest");
   await offline.close();
+  const slow = await browser.newContext();
+  await slow.route("https://api.tragarze.pl/**", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    await route.fulfill({ json: snapshot, headers: { "Access-Control-Allow-Origin": base, "Access-Control-Allow-Credentials": "true" } });
+  });
+  const slowPage = await slow.newPage();
+  await slowPage.goto(base + "/blog/?sort=popular");
+  assert(await slowPage.locator("[data-stats-list] a").count() > 0, "Slow API must not block static listing content");
+  await slow.close();
   const noJs = await browser.newContext({ javaScriptEnabled: false });
   const staticPage = await noJs.newPage();
   await staticPage.goto(base + "/blog/?sort=rating");

@@ -19,6 +19,12 @@ function assertExcludes(source, expected, label) {
   }
 }
 
+function structuredData(source, label) {
+  const scripts = [...source.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)].map((match) => JSON.parse(match[1]));
+  if (!scripts.length) throw new Error(`${label}: missing parseable JSON-LD.`);
+  return scripts;
+}
+
 const articlePath = "blog/poradniki/jak-przygotowac-przeprowadzke/index.html";
 const article = await readDist(articlePath);
 assertIncludes(article, "<title>Jak przygotować przeprowadzkę mieszkania</title>", articlePath);
@@ -30,6 +36,9 @@ assertIncludes(article, '"@type":"BreadcrumbList"', articlePath);
 assertIncludes(article, 'meta name="robots" content="index,follow"', articlePath);
 assertExcludes(article, "szkic-przeprowadzki", articlePath);
 assertExcludes(article, "zaplanowana-przeprowadzka", articlePath);
+const articleJsonLd = structuredData(article, articlePath);
+assertIncludes(JSON.stringify(articleJsonLd), '"@type":"BlogPosting"', `${articlePath} JSON-LD`);
+assertIncludes(JSON.stringify(articleJsonLd), '"@type":"BreadcrumbList"', `${articlePath} JSON-LD`);
 
 const profilePath = "redakcja/jan-kowalski/index.html";
 const profile = await readDist(profilePath);
@@ -37,6 +46,8 @@ assertIncludes(profile, "<title>Jan Kowalski - redakcja tragarze.pl</title>", pr
 assertIncludes(profile, 'rel="canonical" href="https://tragarze.pl/redakcja/jan-kowalski/"', profilePath);
 assertIncludes(profile, '"@type":"ProfilePage"', profilePath);
 assertIncludes(profile, '"@type":"Person"', profilePath);
+const profileJsonLd = structuredData(profile, profilePath);
+assertIncludes(JSON.stringify(profileJsonLd), '"@type":"ProfilePage"', `${profilePath} JSON-LD`);
 
 const editorial = await readDist("redakcja/index.html");
 assertIncludes(editorial, "<title>Redakcja tragarze.pl</title>", "redakcja/index.html");

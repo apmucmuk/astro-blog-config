@@ -18,6 +18,7 @@
     "deploy:artifacts": "node scripts/generate-deploy-artifacts.mjs",
     "deploy:validate": "pnpm worker:registry:sql && node scripts/validate-deploy-adapter.mjs",
     "deploy:preview:validate": "pnpm worker:registry:sql && node scripts/validate-deploy-adapter.mjs preview",
+    "qa:validate": "node scripts/validate-production-qa.mjs",
     "deploy:preview:build": "node scripts/build-deployment.mjs preview",
     "deploy:production:build": "node scripts/build-deployment.mjs production",
     "worker:registry": "node scripts/generate-runtime-registry.mjs",

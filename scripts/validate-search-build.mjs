@@ -62,14 +62,29 @@ try {
   page.on("console", (message) => { if (message.type() === "error") browserErrors.push(message.text()); });
   page.on("pageerror", (error) => browserErrors.push(error.message));
   await page.goto(`${baseUrl}/szukaj/`, { waitUntil: "networkidle" });
-  await page.locator("#search-query").fill("przygotować przeprowadzkę");
-  await page.locator(".search-form").press("Enter");
-  await page.waitForFunction(() => !document.querySelector("[data-search-status]")?.textContent?.includes("Wyszukiwanie..."));
-  const searchStatus = await page.locator("[data-search-status]").textContent();
-  assert(searchStatus?.startsWith("Znaleziono"), `Published search failed: ${searchStatus}; ${browserErrors.join(" | ")}`);
+  async function query(value) {
+    await page.locator("#search-query").fill(value);
+    await page.locator(".search-form").press("Enter");
+    await page.waitForFunction(() => !document.querySelector("[data-search-status]")?.textContent?.includes("Wyszukiwanie..."));
+    return {
+      status: await page.locator("[data-search-status]").textContent(),
+      resultCount: await page.locator(".search-results a").count(),
+      text: await page.locator(".search-results").innerText(),
+    };
+  }
+
+  const published = await query("przygotować przeprowadzkę");
+  assert(published.status?.startsWith("Znaleziono"), `Published search failed: ${published.status}; ${browserErrors.join(" | ")}`);
   const resultHref = await page.locator(".search-results a").first().getAttribute("href");
   assert(resultHref === "/blog/poradniki/jak-przygotowac-przeprowadzke/", `Unexpected result URL: ${resultHref}`);
-  assert(!await page.locator(".search-results").innerText().then((text) => text.includes("Szkic artykułu") || text.includes("Zaplanowany")), "Forbidden content appeared in search results.");
+  assert(!published.text.includes("Szkic artykułu") && !published.text.includes("Zaplanowany"), "Forbidden content appeared in published search results.");
+  for (const forbiddenQuery of [
+    '"Ten szkic nie powinien dostać publicznej produkcyjnej ścieżki"',
+    '"Ten artykuł jest zaplanowany na przyszłość i nie powinien dostać publicznej ścieżki"',
+  ]) {
+    const forbidden = await query(forbiddenQuery);
+    assert(forbidden.status === "Nie znaleziono wyników." && forbidden.resultCount === 0, `Forbidden Pagefind query returned results: ${forbiddenQuery}`);
+  }
   await page.locator("#search-query").focus();
   assert(await page.evaluate(() => document.activeElement?.id === "search-query"), "Search input cannot receive keyboard focus.");
   await context.close();

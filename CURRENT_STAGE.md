@@ -7,15 +7,46 @@ Factual implementation status for the active project. This file records what has
 `tragarze.pl`
 
 ## Current stage
-Stage 11 - Deploy adapter.
+Stage 12 - Production QA.
 
 ## Status
 `complete`
 
-Stage 11 implementation has been verified locally in `codex/stage-11-deploy-adapter`, based on accepted Stage 10 commit `641ae16c85d08aa36693a5ce4c33653faf5cf23a`.
+Stage 12 implementation has been verified locally in `codex/stage-12-production-qa`, based on accepted Stage 11 commit `622c1a187055e58c7ec3200507c3911ed97c8056`.
 Local completion does not imply real Cloudflare/DNS/Access production readiness.
 
 ## Verified checks
+### Stage 12 (2026-09-22)
+- `pnpm test` - PASS: 12 files / 76 tests.
+- `pnpm check` - PASS: content validation, Astro typecheck (0 errors/warnings/hints) and architecture boundaries.
+- `pnpm deploy:preview:build && pnpm deploy:preview:validate` - PASS: preview static output has noindex header/robots policy, Pagefind and deploy artifacts.
+- `pnpm deploy:production:build && pnpm deploy:validate` - PASS: production static output, redirects/404/cache HTTP checks and transactional registry SQL.
+- `pnpm worker:validate`, `pnpm seo:validate`, `pnpm theme:validate`, `pnpm search:validate`, `pnpm reads:validate`, `pnpm qa:validate` - PASS: runtime, representative structured data, theme/no-JS/focus/mobile, Pagefind, API-failure/read behavior and static CSP/secret/output checks.
+- `git diff 622c1a187055e58c7ec3200507c3911ed97c8056 -- worker/migrations` - PASS: empty; QA adds no migration and preserves `0001`-`0003`.
+
+### Exact SPEC 93.12 gate mapping
+| Gate | Result | Evidence |
+| --- | --- | --- |
+| Search Console property / sitemap submitted | BLOCKED | requires confirmed production property, ownership and deployed canonical host; Q001 remains open |
+| Representative URL inspection | PASS locally | production artifact HTTP validation covers canonical 200, 301 redirect, page-one normalization and real 404 |
+| Structured data validation | PASS locally | representative BlogPosting/BreadcrumbList/ProfilePage JSON-LD is parsed, not only string-matched |
+| Mobile widths / keyboard / JS disabled | PASS locally | existing production Chrome gates cover 320/375/390/430/1280 relevant flows, skip link, no-JS article/listing/search and no horizontal overflow |
+| Slow/unavailable API | PASS locally | reads browser validator uses a delayed API response and an explicit abort fallback; static UI remains usable |
+| Turnstile failure | PASS locally | existing comments tests confirm server-side failure before comment/stats writes |
+| Cold-load performance | PASS locally | production-build checks confirm non-lazy LCP image, intrinsic dimensions, no global React app and static first content; field metrics need real traffic |
+| No secrets exposed | PASS locally | static-output security scan finds no sensitive runtime configuration; source secret checks and lockfile checks pass |
+| No fatal console/runtime errors | PASS locally | production-browser Pagefind/reads/theme flows pass; stricter CSP scan found and removed inline executable admin script |
+
+### Stage 12 defects fixed
+- Search negative validation previously used generic terms, which could match allowed content. It now searches exact unique draft/scheduled phrases against the real Pagefind production index and requires zero results.
+- The static admin page used an inline executable Astro script. That conflicted with the deploy adapter's strict `script-src 'self'` CSP. The moderation client is now a static external module; QA verifies no executable inline script remains in production HTML.
+- SEO validation now parses representative JSON-LD scripts before checking BlogPosting, BreadcrumbList and ProfilePage semantics.
+
+### Cross-stage gate status
+- Security, Design/CSS, Runtime Data/Operations and Final Contract Regression: PASS locally through the final validator/test set, apart from the explicit external infrastructure blockers below.
+- Browser compatibility: PASS for available desktop Chrome and production mobile emulation. Real iOS Safari, Android Chrome device, desktop Safari and Firefox verification remains external BLOCKED because those browsers/devices are unavailable in this workspace.
+- No Stage 13 work exists; Stage 12 is the final implementation QA stage.
+
 ### Stage 11 (2026-09-22)
 - `pnpm test` - PASS: 12 files / 76 tests.
 - `pnpm check` - PASS: content validation, Astro typecheck (0 errors/warnings/hints) and architecture boundary check.
@@ -284,7 +315,7 @@ The exact Stage Gate in the current `SPEC.md` is authoritative. Verified checks 
 - Stage 1-6 regression checks continue to pass.
 
 ## Blockers
-Local Stage 11 implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED pending external authorization/configuration outside the repository:
+Local Stage 12 implementation is complete. Production/preview Cloudflare deployed verification remains BLOCKED pending external authorization/configuration outside the repository:
 - Cloudflare account permission to create/manage Workers and D1;
 - real preview and production D1 database IDs/names;
 - Worker deployment target for `tragarze-api`;
