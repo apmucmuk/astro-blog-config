@@ -25,7 +25,7 @@ import type { Env } from "./types";
 import { parseReadInput } from "../../src/core/api/reads";
 import { recordRead } from "./reads";
 import { statsResponse } from "./stats-cache";
-import { requireReadCapacity } from "./read-limit";
+import { requirePublicMutationCapacity, requireReadCapacity } from "./read-limit";
 import { requireAccess } from "./access";
 import { getOptionalVisitorIdentity, getOrCreateVisitorIdentity } from "./visitor";
 
@@ -67,10 +67,19 @@ function adminCommentMatch(pathname: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-function enforceRatingRateLimitPath(env: Env): void {
-  if (env.RATE_LIMIT_RATINGS === "0") {
-    throw new ApiError(429, "RATE_LIMITED", "Rating rate limit exceeded.");
-  }
+async function requireMutationCapacity(
+  env: Env,
+  limiter: Env["COMMENT_CREATE_RATE_LIMITER"],
+  visitorId: string,
+  resource: string,
+  developmentLimit?: string,
+): Promise<void> {
+  await requirePublicMutationCapacity(env, limiter, JSON.stringify([env.SITE_ID, resource, visitorId]), developmentLimit);
+}
+
+function attachVisitorCookie(response: Response, setCookie?: string): Response {
+  if (setCookie) response.headers.set("Set-Cookie", setCookie);
+  return response;
 }
 
 async function readStrictJson(request: Request): Promise<unknown> {
@@ -127,22 +136,27 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       return jsonResponse(await listComments(env.DB, env, url));
     }
     if (request.method === "POST") {
-      if (env.RATE_LIMIT_COMMENTS === "0") {
-        throw new ApiError(429, "RATE_LIMITED", "Comment rate limit exceeded.");
-      }
-      return mutationJsonResponse(await createComment(env.DB, env, parseCreateCommentRequest(await readStrictJson(request))));
+      const visitor = getOrCreateVisitorIdentity(request, env);
+      await requireMutationCapacity(env, env.COMMENT_CREATE_RATE_LIMITER, visitor.visitorId!, "comment-create", env.RATE_LIMIT_COMMENTS);
+      return attachVisitorCookie(mutationJsonResponse(await createComment(env.DB, env, parseCreateCommentRequest(await readStrictJson(request)))), visitor.setCookie);
     }
     return methodNotAllowed(mutation);
   }
 
   const helpfulCommentId = commentActionMatch(url.pathname, "helpful");
   if (helpfulCommentId) {
-    return request.method === "POST" ? mutationJsonResponse(await markHelpful(env.DB, helpfulCommentId)) : methodNotAllowed(mutation);
+    if (request.method !== "POST") return methodNotAllowed(mutation);
+    const visitor = getOrCreateVisitorIdentity(request, env);
+    await requireMutationCapacity(env, env.COMMENT_FEEDBACK_RATE_LIMITER, visitor.visitorId!, `comment-helpful:${helpfulCommentId}`, env.RATE_LIMIT_COMMENTS);
+    return attachVisitorCookie(mutationJsonResponse(await markHelpful(env.DB, helpfulCommentId)), visitor.setCookie);
   }
 
   const reportCommentId = commentActionMatch(url.pathname, "report");
   if (reportCommentId) {
-    return request.method === "POST" ? mutationJsonResponse(await reportComment(env.DB, reportCommentId)) : methodNotAllowed(mutation);
+    if (request.method !== "POST") return methodNotAllowed(mutation);
+    const visitor = getOrCreateVisitorIdentity(request, env);
+    await requireMutationCapacity(env, env.COMMENT_FEEDBACK_RATE_LIMITER, visitor.visitorId!, `comment-report:${reportCommentId}`, env.RATE_LIMIT_COMMENTS);
+    return attachVisitorCookie(mutationJsonResponse(await reportComment(env.DB, reportCommentId)), visitor.setCookie);
   }
 
   const adminCommentId = adminCommentMatch(url.pathname);
@@ -173,15 +187,12 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     }
 
     if (request.method === "POST") {
-      enforceRatingRateLimitPath(env);
       const visitor = getOrCreateVisitorIdentity(request, env);
+      await requireMutationCapacity(env, env.RATING_RATE_LIMITER, visitor.visitorId!, `rating:${ratingArticleId}`, env.RATE_LIMIT_RATINGS);
       const body = parseRatingRequest(await readStrictJson(request));
-      const response = mutationJsonResponse(
+      const response = attachVisitorCookie(mutationJsonResponse(
         await submitRating(env.DB, env.SITE_ID, ratingArticleId, visitor.visitorId ?? "", body.value),
-      );
-      if (visitor.setCookie) {
-        response.headers.set("Set-Cookie", visitor.setCookie);
-      }
+      ), visitor.setCookie);
       return response;
     }
 

@@ -37,6 +37,7 @@ export async function getStaticPaths() {
 }
 
 const { article, articles, category, people } = Astro.props;
+const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 const searchIndexable = isSearchIndexable(article);
 const { Content } = await render(article);
 const canonical = articleCanonical({
@@ -144,11 +145,23 @@ const jsonLd = [
     <div class="article-body article-container" data-read-article data-site-id={projectConfig.siteId} data-article-id={article.data.id} data-api-url={projectConfig.apiUrl} data-dedup-seconds={runtimeConfig.readDedupWindowSeconds}>
         <Content />
     </div>
+    <section class="comment-form article-container" aria-labelledby="comment-title">
+      <h2 id="comment-title">Dodaj komentarz</h2>
+      <form data-comment-form data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-turnstile-site-key={turnstileSiteKey}>
+        <label>Imię <input name="name" required maxlength="40" autocomplete="name" /></label>
+        <label>Komentarz <textarea name="body" required maxlength="1500" rows="5"></textarea></label>
+        <div data-turnstile-widget></div>
+        <p data-comment-status role="status" aria-live="polite"></p>
+        <button type="submit">Wyślij komentarz</button>
+      </form>
+    </section>
   </article>
 </BaseLayout>
 <script>
   import { mountReadDetector } from "@features/reads/detector";
   import { enhanceStats } from "@features/stats/listing";
+  import { mountCommentForm } from "@features/comments/form";
   document.querySelectorAll<HTMLElement>("[data-read-article]").forEach(mountReadDetector);
   document.querySelectorAll<HTMLElement>("[data-stats-batch]").forEach((element) => { void enhanceStats(element); });
+  document.querySelectorAll<HTMLFormElement>("[data-comment-form]").forEach(mountCommentForm);
 </script>

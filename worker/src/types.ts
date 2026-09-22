@@ -18,6 +18,10 @@ export type D1Database = {
   batch?: (statements: D1PreparedStatement[]) => Promise<D1Result[]>;
 };
 
+export type RateLimiter = {
+  limit: (input: { key: string }) => Promise<{ success: boolean }>;
+};
+
 export type Env = {
   DB: D1Database;
   APP_ENV: AppEnv;
@@ -28,7 +32,10 @@ export type Env = {
   RATE_LIMIT_RATINGS?: string;
   RATE_LIMIT_COMMENTS?: string;
   RATE_LIMIT_READS?: string;
-  READ_RATE_LIMITER?: { limit: (input: { key: string }) => Promise<{ success: boolean }> };
+  READ_RATE_LIMITER?: RateLimiter;
+  COMMENT_CREATE_RATE_LIMITER?: RateLimiter;
+  COMMENT_FEEDBACK_RATE_LIMITER?: RateLimiter;
+  RATING_RATE_LIMITER?: RateLimiter;
   TURNSTILE_MODE?: "mock" | "production";
   TURNSTILE_SECRET_KEY?: string;
   CF_ACCESS_TEAM_DOMAIN?: string;

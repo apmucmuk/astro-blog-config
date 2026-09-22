@@ -125,6 +125,32 @@ describe("worker runtime foundation", () => {
     expect(body.error.code).toBe("RATE_LIMITED");
   });
 
+  it("fails closed for missing preview mutation limiters before database access", async () => {
+    const response = await worker.fetch(
+      new Request("https://api.tragarze.pl/v1/articles/art-tragarze-001/rating", {
+        method: "POST",
+        headers: { Origin: "https://tragarze.pl", "Content-Type": "application/json" },
+        body: JSON.stringify({ value: 5 }),
+      }),
+      { ...env, APP_ENV: "preview" },
+    );
+    expect(response.status).toBe(503);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+  });
+
+  it("uses the configured public mutation limiter before database access", async () => {
+    const response = await worker.fetch(
+      new Request("https://api.tragarze.pl/v1/comments", {
+        method: "POST",
+        headers: { Origin: "https://tragarze.pl", "Content-Type": "application/json" },
+        body: JSON.stringify({ articleId: "art-tragarze-001", name: "Jan", body: "ok", turnstileToken: "test-pass" }),
+      }),
+      { ...env, COMMENT_CREATE_RATE_LIMITER: { limit: async () => ({ success: false }) } },
+    );
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+  });
+
   it("keeps comments mutation errors no-store and exact-origin protected", async () => {
     const invalidOrigin = await worker.fetch(
       new Request("https://api.tragarze.pl/v1/comments", {

@@ -12,5 +12,11 @@
     "VISITOR_COOKIE_NAME": "tragarze_vid",
     "LOG_LEVEL": "info"
   },
-  "d1_databases": [{ "binding": "DB", "database_name": "REPLACE_WITH_PRODUCTION_D1_NAME", "database_id": "REPLACE_WITH_PRODUCTION_D1_ID", "migrations_dir": "migrations" }]
+  "d1_databases": [{ "binding": "DB", "database_name": "REPLACE_WITH_PRODUCTION_D1_NAME", "database_id": "REPLACE_WITH_PRODUCTION_D1_ID", "migrations_dir": "migrations" }],
+  "ratelimits": [
+    { "name": "READ_RATE_LIMITER", "namespace_id": "REPLACE_WITH_PRODUCTION_READ_NAMESPACE", "simple": { "limit": "REPLACE_WITH_PRODUCTION_READ_LIMIT", "period": 60 } },
+    { "name": "COMMENT_CREATE_RATE_LIMITER", "namespace_id": "REPLACE_WITH_PRODUCTION_COMMENT_CREATE_NAMESPACE", "simple": { "limit": "REPLACE_WITH_PRODUCTION_COMMENT_CREATE_LIMIT", "period": 60 } },
+    { "name": "COMMENT_FEEDBACK_RATE_LIMITER", "namespace_id": "REPLACE_WITH_PRODUCTION_COMMENT_FEEDBACK_NAMESPACE", "simple": { "limit": "REPLACE_WITH_PRODUCTION_COMMENT_FEEDBACK_LIMIT", "period": 60 } },
+    { "name": "RATING_RATE_LIMITER", "namespace_id": "REPLACE_WITH_PRODUCTION_RATING_NAMESPACE", "simple": { "limit": "REPLACE_WITH_PRODUCTION_RATING_LIMIT", "period": 60 } }
+  ]
 }

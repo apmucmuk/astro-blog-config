@@ -28,7 +28,7 @@ const headers = [
   "  X-Content-Type-Options: nosniff",
   "  Referrer-Policy: strict-origin-when-cross-origin",
   "  Permissions-Policy: camera=(), geolocation=(), microphone=()",
-  `  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' ${apiOrigin}`,
+  `  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; frame-src https://challenges.cloudflare.com; connect-src 'self' ${apiOrigin} https://challenges.cloudflare.com`,
   ...(environment === "production" ? ["  Strict-Transport-Security: max-age=31536000; includeSubDomains"] : ["  X-Robots-Tag: noindex, nofollow"]),
   "",
   "/_astro/*",
