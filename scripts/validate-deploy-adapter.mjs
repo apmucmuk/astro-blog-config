@@ -15,7 +15,9 @@ for (const expected of ["X-Content-Type-Options: nosniff", "Referrer-Policy: str
 }
 assert(redirects.includes("/blog/page/1/ /blog/ 301"), "Missing /page/1/ normalization redirect.");
 assert(redirects.includes("/blog/poradniki/stary-plan-przeprowadzki/ /blog/poradniki/jak-przygotowac-przeprowadzke/ 301"), "Missing historical redirect.");
-assert(registrySql.startsWith("BEGIN;") && registrySql.endsWith("COMMIT;\n"), "Registry sync must be transactional.");
+assert(!/\bBEGIN(?:\s+TRANSACTION)?\s*;/i.test(registrySql), "Registry sync SQL must not contain an explicit transaction wrapper.");
+assert(!/\bCOMMIT\s*;/i.test(registrySql), "Registry sync SQL must not contain an explicit transaction wrapper.");
+assert(!/\bSAVEPOINT\b/i.test(registrySql), "Registry sync SQL must not contain savepoints.");
 assert(registrySql.includes("ON CONFLICT(site_id, article_id) DO UPDATE") && registrySql.includes("runtime_enabled = 0"), "Registry sync must upsert current entries and disable removed entries.");
 assert(!registrySql.includes("art-tragarze-draft") && !registrySql.includes("art-tragarze-scheduled"), "Registry SQL must exclude draft/scheduled entries.");
 assert(manifest.environment === expectedEnvironment, `Expected ${expectedEnvironment} deployment artifacts.`);
