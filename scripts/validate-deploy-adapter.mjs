@@ -31,10 +31,16 @@ if (expectedEnvironment === "preview") {
   const files = await readdir(dist, { recursive: true });
   const textFiles = await Promise.all(files.filter((file) => /\.(?:html|js|json|txt)$/i.test(file)).map((file) => readFile(path.join(dist, file), "utf8")));
   assert(!textFiles.some((file) => file.includes(productionApiOrigin)), "Preview dist must not contain the production API origin.");
-  for (const interactivePage of ["admin/index.html", "blog/poradniki/jak-przygotowac-przeprowadzke/index.html"]) {
-    const html = await readFile(path.join(dist, interactivePage), "utf8");
-    assert(html.includes(`data-api-url=\"${manifest.apiOrigin}\"`), `${interactivePage} must use the configured preview API origin.`);
-  }
+  const adminHtml = await readFile(path.join(dist, "admin/index.html"), "utf8");
+  const articleHtml = await readFile(path.join(dist, "blog/poradniki/jak-przygotowac-przeprowadzke/index.html"), "utf8");
+  const adminScript = await readFile(path.join(dist, "scripts/admin-moderation.js"), "utf8");
+  const routes = JSON.parse(await readFile(path.join(dist, "_routes.json"), "utf8"));
+  assert(!adminHtml.includes("data-api-url="), "Admin HTML must use same-origin /admin/api routes, not PUBLIC_API_URL.");
+  assert(!adminHtml.includes(manifest.apiOrigin), "Admin HTML must not contain the preview Worker origin.");
+  assert(!adminScript.includes("workers.dev") && !adminScript.includes(manifest.apiOrigin), "Admin client must not call a Worker origin directly.");
+  assert(adminScript.includes('"/admin/api/comments/spam/purge"') && adminScript.includes("`/admin/api/comments?status="), "Admin client must use relative /admin/api routes.");
+  assert(JSON.stringify(routes) === JSON.stringify({ version: 1, include: ["/admin/api/*"], exclude: [] }), "Pages Functions must be limited to /admin/api/*.");
+  assert(articleHtml.includes(`data-api-url=\"${manifest.apiOrigin}\"`), "Interactive public pages must keep the configured preview API origin.");
 } else {
   assert(text.includes("Strict-Transport-Security:"), "Production must declare HSTS after HTTPS deployment verification.");
   assert(robots.includes("Sitemap:"), "Production robots.txt must retain the sitemap.");

@@ -4,7 +4,7 @@ import { projectConfig } from "@project/site.config";
 import { navigation } from "@project/navigation";
 ---
 <BaseLayout title={`Moderacja komentarzy - ${projectConfig.name}`} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
-  <section class="container page-section" data-admin data-api-url={projectConfig.apiUrl}>
+  <section class="container page-section" data-admin>
     <h1>Moderacja komentarzy</h1>
     <label>Kolejka <select data-admin-status><option value="pending">Oczekujące</option><option value="published">Opublikowane</option><option value="spam">Spam</option></select></label>
     <button type="button" data-admin-purge>Usuń cały spam</button>

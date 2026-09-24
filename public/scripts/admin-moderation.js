@@ -5,8 +5,6 @@ async function request(url, init) {
 }
 
 function mountModeration(root) {
-  const api = root.dataset.apiUrl;
-  if (!api) return;
   const status = root.querySelector("[data-admin-status]");
   const list = root.querySelector("[data-admin-list]");
   const message = root.querySelector("[data-admin-message]");
@@ -14,7 +12,7 @@ function mountModeration(root) {
   const render = async () => {
     message.textContent = "";
     try {
-      const response = await request(new URL(`/admin/api/comments?status=${encodeURIComponent(status.value)}`, api));
+      const response = await request(`/admin/api/comments?status=${encodeURIComponent(status.value)}`);
       const queue = await response.json();
       list.replaceChildren(...queue.items.map((comment) => {
         const item = document.createElement("li");
@@ -30,8 +28,8 @@ function mountModeration(root) {
         item.querySelectorAll("button").forEach((button) => button.addEventListener("click", async () => {
           try {
             const action = button.dataset.action;
-            if (action === "delete") await request(new URL(`/admin/api/comments/${comment.id}`, api), { method: "DELETE", headers: { "Content-Type": "application/json" } });
-            else await request(new URL(`/admin/api/comments/${comment.id}`, api), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: action, ...(action === "published" && links === 1 ? { linkRel: linkRel.value } : {}) }) });
+            if (action === "delete") await request(`/admin/api/comments/${comment.id}`, { method: "DELETE", headers: { "Content-Type": "application/json" } });
+            else await request(`/admin/api/comments/${comment.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: action, ...(action === "published" && links === 1 ? { linkRel: linkRel.value } : {}) }) });
             await render();
           } catch { message.textContent = "Nie udało się zapisać moderacji."; }
         }));
@@ -42,7 +40,7 @@ function mountModeration(root) {
   };
   status.addEventListener("change", () => { void render(); });
   purge.addEventListener("click", async () => {
-    try { await request(new URL("/admin/api/comments/spam/purge", api), { method: "POST", headers: { "Content-Type": "application/json" } }); await render(); }
+    try { await request("/admin/api/comments/spam/purge", { method: "POST", headers: { "Content-Type": "application/json" } }); await render(); }
     catch { message.textContent = "Nie udało się usunąć spamu."; }
   });
   void render();
