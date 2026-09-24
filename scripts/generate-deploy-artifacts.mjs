@@ -22,6 +22,9 @@ const redirectLines = [
 await writeFile(path.join(dist, "_redirects"), `${redirectLines.join("\n")}\n`);
 
 const apiOrigin = process.env.PUBLIC_API_URL ?? "https://api.tragarze.pl";
+if (environment === "preview" && apiOrigin === "https://api.tragarze.pl") {
+  throw new Error("Preview deployment artifacts must use a non-production PUBLIC_API_URL.");
+}
 const headers = [
   "/*",
   "  Cache-Control: public, max-age=0, must-revalidate",
@@ -53,6 +56,7 @@ const registry = JSON.parse(await readFile(path.join(root, "worker/registry/cont
 await mkdir(path.join(dist, ".well-known"), { recursive: true });
 await writeFile(path.join(dist, "deployment-manifest.json"), `${JSON.stringify({
   environment,
+  apiOrigin,
   staticOutput: "dist",
   registryGeneratedAtMs: registry.generatedAtMs,
   runtimeArticleCount: registry.articles.length,

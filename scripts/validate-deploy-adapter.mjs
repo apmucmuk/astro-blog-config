@@ -9,6 +9,7 @@ const text = await readFile(path.join(dist, "_headers"), "utf8");
 const redirects = await readFile(path.join(dist, "_redirects"), "utf8");
 const manifest = JSON.parse(await readFile(path.join(dist, "deployment-manifest.json"), "utf8"));
 const registrySql = await readFile(path.join(process.cwd(), "worker/registry/content-articles.sql"), "utf8");
+const productionApiOrigin = "https://api.tragarze.pl";
 
 for (const expected of ["X-Content-Type-Options: nosniff", "Referrer-Policy: strict-origin-when-cross-origin", "Permissions-Policy:", "Content-Security-Policy:", "/_astro/*", "immutable", "/pagefind/*"]) {
   assert(text.includes(expected), `Missing deploy header rule: ${expected}`);
@@ -25,6 +26,15 @@ const robots = await readFile(path.join(dist, "robots.txt"), "utf8");
 if (expectedEnvironment === "preview") {
   assert(text.includes("X-Robots-Tag: noindex, nofollow"), "Preview must set a noindex response header.");
   assert(robots.includes("Disallow: /"), "Preview robots.txt must disallow crawling.");
+  assert(typeof manifest.apiOrigin === "string" && manifest.apiOrigin.startsWith("https://"), "Preview manifest must record an HTTPS API origin.");
+  assert(manifest.apiOrigin !== productionApiOrigin, "Preview must not use the production API origin.");
+  const files = await readdir(dist, { recursive: true });
+  const textFiles = await Promise.all(files.filter((file) => /\.(?:html|js|json|txt)$/i.test(file)).map((file) => readFile(path.join(dist, file), "utf8")));
+  assert(!textFiles.some((file) => file.includes(productionApiOrigin)), "Preview dist must not contain the production API origin.");
+  for (const interactivePage of ["admin/index.html", "blog/poradniki/jak-przygotowac-przeprowadzke/index.html"]) {
+    const html = await readFile(path.join(dist, interactivePage), "utf8");
+    assert(html.includes(`data-api-url=\"${manifest.apiOrigin}\"`), `${interactivePage} must use the configured preview API origin.`);
+  }
 } else {
   assert(text.includes("Strict-Transport-Security:"), "Production must declare HSTS after HTTPS deployment verification.");
   assert(robots.includes("Sitemap:"), "Production robots.txt must retain the sitemap.");
