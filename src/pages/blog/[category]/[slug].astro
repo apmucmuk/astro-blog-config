@@ -12,10 +12,11 @@ import { runtimeConfig } from "@project/runtime.config";
 import categories from "../../../content/data/categories.json";
 import type { FeaturedComments } from "@features/comments/featured";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import CommentBody from "@features/comments/CommentBody.astro";
 
 let featuredComments: FeaturedComments = {};
-try { featuredComments = JSON.parse(await readFile(new URL("../../../../worker/registry/featured-comments.json", import.meta.url), "utf8")); } catch { /* Deployment build generates the optional snapshot. */ }
+try { featuredComments = JSON.parse(await readFile(path.join(process.cwd(), "worker/registry/featured-comments.json"), "utf8")); } catch { /* Deployment build generates the optional snapshot. */ }
 
 export async function getStaticPaths() {
   const articles = filterPublished(await getCollection("blog"));
