@@ -31,9 +31,13 @@ function commentElement(comment: PublicComment, apiUrl: string, onChange: () => 
   const actions = document.createElement("p");
   for (const [label, action] of [[`Pomocne (${comment.helpfulCount})`, "helpful"], ["Zgłoś", "report"]] as const) {
     const button = document.createElement("button"); button.type = "button"; button.textContent = label;
+    const dedupKey = `comment:${action}:${comment.id}`;
+    if (action === "helpful") {
+      try { if (window.localStorage.getItem(dedupKey) === "1") button.disabled = true; } catch { /* The provider limit remains the fallback. */ }
+    }
     button.addEventListener("click", async () => {
       button.disabled = true;
-      try { const response = await fetch(new URL(`/v1/comments/${encodeURIComponent(comment.id)}/${action}`, apiUrl), { method: "POST", credentials: "include" }); if (!response.ok) throw new Error(); onChange(); }
+      try { const response = await fetch(new URL(`/v1/comments/${encodeURIComponent(comment.id)}/${action}`, apiUrl), { method: "POST", credentials: "include" }); if (!response.ok) throw new Error(); if (action === "helpful") { try { window.localStorage.setItem(dedupKey, "1"); } catch { /* Session-level disabled state remains. */ } } onChange(); }
       catch { button.disabled = false; }
     }); actions.append(button, " ");
   }
