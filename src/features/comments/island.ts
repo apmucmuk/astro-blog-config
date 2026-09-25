@@ -61,5 +61,17 @@ export function mountComments(surface: CommentSurface): void {
     } catch { more.hidden = true; } finally { loading = false; }
   };
   more.addEventListener("click", () => { void load(); }); void load(true);
+  surface.querySelectorAll<HTMLButtonElement>("[data-comment-action]").forEach((button) => {
+    const id = button.closest<HTMLElement>("[data-comment-id]")?.dataset.commentId;
+    const action = button.dataset.commentAction;
+    if (!id || (action !== "helpful" && action !== "report")) return;
+    const dedupKey = `comment:${action}:${id}`;
+    if (action === "helpful") { try { if (window.localStorage.getItem(dedupKey) === "1") button.disabled = true; } catch { /* Provider rate limiting remains the fallback. */ } }
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try { const response = await fetch(new URL(`/v1/comments/${encodeURIComponent(id)}/${action}`, apiUrl), { method: "POST", credentials: "include" }); if (!response.ok) throw new Error(); if (action === "helpful") { try { window.localStorage.setItem(dedupKey, "1"); } catch { /* Session disabled state remains. */ } } await load(true); }
+      catch { button.disabled = false; }
+    });
+  });
   surface.closest("article")?.addEventListener("comment:created", () => { void load(true); });
 }

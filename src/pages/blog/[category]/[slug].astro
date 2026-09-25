@@ -164,7 +164,7 @@ const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
     </section>
     <section class="comments article-container" data-comments data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-featured-ids={featured.map((comment) => comment.id).join(",")} aria-labelledby="comments-title">
       <h2 id="comments-title">Komentarze</h2>
-      {featured.length > 0 && <section aria-labelledby="featured-comments-title"><h3 id="featured-comments-title">Wyróżnione</h3><ul class="comments-list">{featured.map((comment) => <li class="comment-item"><p><strong>{comment.name}</strong> · <time datetime={comment.createdAt}>{new Date(comment.createdAt).toLocaleDateString("pl-PL")}</time></p><p><CommentBody body={comment.body} linkRel={comment.linkRel} /></p><p>Pomocne ({comment.helpfulCount})</p></li>)}</ul></section>}
+      {featured.length > 0 && <section aria-labelledby="featured-comments-title"><h3 id="featured-comments-title">Wyróżnione</h3><ul class="comments-list">{featured.map((comment) => <li class="comment-item" data-comment-id={comment.id}><p><strong>{comment.name}</strong> · <time datetime={comment.createdAt}>{new Date(comment.createdAt).toLocaleDateString("pl-PL")}</time></p><p><CommentBody body={comment.body} linkRel={comment.linkRel} /></p><p><button type="button" data-comment-action="helpful">Pomocne ({comment.helpfulCount})</button> <button type="button" data-comment-action="report">Zgłoś</button></p></li>)}</ul></section>}
       <h3>Najnowsze</h3><ul class="comments-list" data-comments-list></ul><button type="button" data-comments-more hidden>Pokaż więcej</button>
     </section>
   </article>
