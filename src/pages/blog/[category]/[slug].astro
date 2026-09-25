@@ -10,6 +10,12 @@ import { projectConfig } from "@project/site.config";
 import { routeSegments } from "@project/routing.config";
 import { runtimeConfig } from "@project/runtime.config";
 import categories from "../../../content/data/categories.json";
+import type { FeaturedComments } from "@features/comments/featured";
+import { readFile } from "node:fs/promises";
+import CommentBody from "@features/comments/CommentBody.astro";
+
+let featuredComments: FeaturedComments = {};
+try { featuredComments = JSON.parse(await readFile(new URL("../../../../worker/registry/featured-comments.json", import.meta.url), "utf8")); } catch { /* Deployment build generates the optional snapshot. */ }
 
 export async function getStaticPaths() {
   const articles = filterPublished(await getCollection("blog"));
@@ -104,6 +110,7 @@ const jsonLd = [
     image: new URL(article.data.image.src, projectConfig.siteUrl).toString(),
   }),
 ];
+const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
 ---
 
 <BaseLayout title={metadata.title} description={metadata.description} locale={article.data.locale} siteName={projectConfig.name} navigation={navigation}>
@@ -127,7 +134,7 @@ const jsonLd = [
         {authorProfiles.map((author) => <a href={author.url}>{author.name}</a>)}
         <time datetime={article.data.publishDate.toISOString()}>{article.data.publishDate.toLocaleDateString("pl-PL")}</time>
       </div>
-      <p data-stats-id={article.data.id}><span hidden>Czytelnicy: <span data-reads></span></span></p>
+      <p data-stats-id={article.data.id}><span hidden>Czytelnicy: <span data-reads></span></span><span> · Komentarze: <span data-comments-count>0</span></span></p>
       <div class="hero__inner">
         <h1 data-pagefind-meta="title">{article.data.title}</h1>
         <p class="lede" data-pagefind-meta="description">{article.data.description}</p>
@@ -155,13 +162,20 @@ const jsonLd = [
         <button type="submit">Wyślij komentarz</button>
       </form>
     </section>
+    <section class="comments article-container" data-comments data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-featured-ids={featured.map((comment) => comment.id).join(",")} aria-labelledby="comments-title">
+      <h2 id="comments-title">Komentarze</h2>
+      {featured.length > 0 && <section aria-labelledby="featured-comments-title"><h3 id="featured-comments-title">Wyróżnione</h3><ul class="comments-list">{featured.map((comment) => <li class="comment-item"><p><strong>{comment.name}</strong> · <time datetime={comment.createdAt}>{new Date(comment.createdAt).toLocaleDateString("pl-PL")}</time></p><p><CommentBody body={comment.body} linkRel={comment.linkRel} /></p><p>Pomocne ({comment.helpfulCount})</p></li>)}</ul></section>}
+      <h3>Najnowsze</h3><ul class="comments-list" data-comments-list></ul><button type="button" data-comments-more hidden>Pokaż więcej</button>
+    </section>
   </article>
 </BaseLayout>
 <script>
   import { mountReadDetector } from "@features/reads/detector";
   import { enhanceStats } from "@features/stats/listing";
   import { mountCommentForm } from "@features/comments/form";
+  import { mountComments } from "@features/comments/island";
   document.querySelectorAll<HTMLElement>("[data-read-article]").forEach(mountReadDetector);
   document.querySelectorAll<HTMLElement>("[data-stats-batch]").forEach((element) => { void enhanceStats(element); });
   document.querySelectorAll<HTMLFormElement>("[data-comment-form]").forEach(mountCommentForm);
+  document.querySelectorAll<HTMLElement>("[data-comments]").forEach(mountComments);
 </script>

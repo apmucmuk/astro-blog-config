@@ -67,6 +67,7 @@ export function mountCommentForm(form: HTMLFormElement): void {
       token = "";
       if (widgetId) window.turnstile?.reset(widgetId);
       status(state, body.message || "Komentarz został opublikowany.");
+      form.dispatchEvent(new CustomEvent("comment:created", { bubbles: true }));
     } catch (error) {
       status(state, error instanceof Error ? error.message : "Nie udało się wysłać komentarza.");
     } finally {

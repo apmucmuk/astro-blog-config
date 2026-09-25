@@ -1,0 +1,21 @@
+---
+import type { CommentLinkRel } from "@core/api";
+
+type Props = { body: string; linkRel: CommentLinkRel | null };
+const { body, linkRel } = Astro.props;
+const expression = /https?:\/\/[^\s<>"']+/gi;
+const parts: Array<{ text: string; href?: string }> = [];
+let from = 0;
+for (const match of body.matchAll(expression)) {
+  const index = match.index ?? 0;
+  if (index > from) parts.push({ text: body.slice(from, index) });
+  try {
+    const url = new URL(match[0]);
+    parts.push(/^https?:$/.test(url.protocol) ? { text: match[0], href: url.href } : { text: match[0] });
+  } catch { parts.push({ text: match[0] }); }
+  from = index + match[0].length;
+}
+if (from < body.length || parts.length === 0) parts.push({ text: body.slice(from) });
+---
+
+{parts.map((part) => part.href ? <a href={part.href} rel={linkRel === "nofollow" || linkRel === "sponsored" ? linkRel : undefined}>{part.text}</a> : part.text)}

@@ -18,6 +18,8 @@ export async function enhanceStats(root: HTMLElement) {
       counter.textContent = new Intl.NumberFormat(document.documentElement.lang).format(stats.reads);
       counter.parentElement!.hidden = false;
     }
+    const comments = item.querySelector<HTMLElement>("[data-comments-count]");
+    if (stats && comments) comments.textContent = new Intl.NumberFormat(document.documentElement.lang).format(stats.commentsCount);
   }
 }
 
