@@ -114,7 +114,7 @@ const jsonLd = [
 const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
 ---
 
-<BaseLayout title={metadata.title} description={metadata.description} locale={article.data.locale} siteName={projectConfig.name} navigation={navigation}>
+<BaseLayout title={metadata.title} description={metadata.description} locale={article.data.locale} siteName={projectConfig.name} navigation={navigation} socialImage={article.data.socialImage?.src ?? article.data.image.src}>
   <Fragment slot="head">
     <meta name="description" content={metadata.description} />
     <meta name="robots" content={metadata.robots} />

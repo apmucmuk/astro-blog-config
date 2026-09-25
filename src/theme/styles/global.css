@@ -273,6 +273,7 @@ p {
   color: #fff;
   font-weight: 600;
 }
+.brand img { display: block; width: min(15rem, 58vw); height: auto; }
 
 .comments { padding-block: var(--space-6); border-top: 1px solid var(--color-border); }
 .comments-list { display: grid; gap: var(--space-3); margin: var(--space-4) 0; padding: 0; list-style: none; }

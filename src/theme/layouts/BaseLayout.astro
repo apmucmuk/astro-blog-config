@@ -7,9 +7,11 @@ type Props = {
   locale: string;
   siteName: string;
   navigation: ReadonlyArray<{ label: string; href: string }>;
+  socialImage?: string;
 };
 
-const { title, description, locale, siteName, navigation } = Astro.props;
+const { title, description, locale, siteName, navigation, socialImage = "/images/tragarze-default-og.png" } = Astro.props;
+const socialOrigin = import.meta.env.PUBLIC_SITE_URL ?? "https://tragarze.pl";
 ---
 
 <!doctype html>
@@ -17,8 +19,10 @@ const { title, description, locale, siteName, navigation } = Astro.props;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>{title ?? siteName}</title>
     {description && <meta name="description" content={description} />}
+    <meta property="og:image" content={new URL(socialImage, socialOrigin).toString()} />
     <slot name="head" />
   </head>
   <body>
@@ -26,7 +30,7 @@ const { title, description, locale, siteName, navigation } = Astro.props;
     <div class="site-shell">
       <header class="site-header">
         <div class="site-header__inner container">
-          <a class="brand" href="/">{siteName}</a>
+          <a class="brand" href="/"><img src="/images/tragarze-logo.svg" width="240" height="48" alt={siteName} /></a>
           <nav class="site-nav" aria-label="Główna nawigacja">
             {navigation.map((item) => <a href={item.href}>{item.label}</a>)}
           </nav>
