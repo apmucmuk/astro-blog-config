@@ -69,7 +69,13 @@ export function mountComments(surface: CommentSurface): void {
     if (action === "helpful") { try { if (window.localStorage.getItem(dedupKey) === "1") button.disabled = true; } catch { /* Provider rate limiting remains the fallback. */ } }
     button.addEventListener("click", async () => {
       button.disabled = true;
-      try { const response = await fetch(new URL(`/v1/comments/${encodeURIComponent(id)}/${action}`, apiUrl), { method: "POST", credentials: "include" }); if (!response.ok) throw new Error(); if (action === "helpful") { try { window.localStorage.setItem(dedupKey, "1"); } catch { /* Session disabled state remains. */ } } await load(true); }
+      try {
+        const response = await fetch(new URL(`/v1/comments/${encodeURIComponent(id)}/${action}`, apiUrl), { method: "POST", credentials: "include" });
+        if (!response.ok) throw new Error();
+        const payload = await response.json() as { helpfulCount?: number };
+        if (action === "helpful") { try { window.localStorage.setItem(dedupKey, "1"); } catch { /* Session disabled state remains. */ } button.textContent = `Pomocne (${payload.helpfulCount ?? ""})`; }
+        else button.textContent = "Zgłoszono";
+      }
       catch { button.disabled = false; }
     });
   });
