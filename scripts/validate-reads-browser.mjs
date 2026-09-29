@@ -20,6 +20,10 @@ await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
 const base = `http://127.0.0.1:${server.address().port}`;
 const article = "/blog/poradniki/jak-przygotowac-przeprowadzke/";
 const id = "art-tragarze-001";
+const articleHtml = await readFile(path.join(root, "blog/poradniki/jak-przygotowac-przeprowadzke/index.html"), "utf8");
+const apiUrlMatch = articleHtml.match(/data-api-url="([^"]+)"/);
+assert(apiUrlMatch, "Built article must expose data-api-url for runtime validation.");
+const apiOrigin = new URL(apiUrlMatch[1]).origin;
 const snapshot = { generatedAt: new Date().toISOString(), articles: [{ id, reads: 42, commentsCount: 0, ratingValue: null, ratingCount: 0 }],
   rankings: { popularNow: [id], popular: [id], comments: [id], rating: [id] } };
 let browser;
@@ -28,7 +32,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 375, height: 812 } });
   let reads = 0, stats = 0, manifests = 0;
   context.on("request", (request) => { if (request.url().includes("/manifests/")) manifests++; });
-  await context.route("https://api.tragarze.pl/**", async (route) => {
+  await context.route(`${apiOrigin}/**`, async (route) => {
     if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: { "Access-Control-Allow-Origin": base, "Access-Control-Allow-Credentials": "true", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "POST, GET" } });
     if (route.request().url().endsWith("/v1/read")) reads++; else stats++;
     await route.fulfill({ json: route.request().url().endsWith("/v1/read") ? { accepted: true } : snapshot,
@@ -79,7 +83,7 @@ try {
   await page.screenshot({ path: ".cache/stage8/listing.png", fullPage: true });
   await context.close();
   const offline = await browser.newContext();
-  await offline.route("https://api.tragarze.pl/**", (route) => route.abort());
+  await offline.route(`${apiOrigin}/**`, (route) => route.abort());
   const fallback = await offline.newPage();
   await fallback.goto(base + "/blog/?sort=rating");
   await fallback.waitForFunction(() => !document.querySelector("[data-stats-error]").hidden);
@@ -87,7 +91,7 @@ try {
   assert.equal(await fallback.locator("select").inputValue(), "newest");
   await offline.close();
   const slow = await browser.newContext();
-  await slow.route("https://api.tragarze.pl/**", async (route) => {
+  await slow.route(`${apiOrigin}/**`, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     await route.fulfill({ json: snapshot, headers: { "Access-Control-Allow-Origin": base, "Access-Control-Allow-Credentials": "true" } });
   });
