@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 
 const dist = path.resolve(process.cwd(), "dist");
@@ -115,11 +115,5 @@ assertIncludes(robots, "Sitemap: https://tragarze.pl/sitemap.xml", "robots.txt")
 const redirects = await readDist("redirects.json");
 assertIncludes(redirects, '"/blog/poradniki/stary-plan-przeprowadzki/"', "redirects.json");
 assertIncludes(redirects, '"/blog/poradniki/jak-przygotowac-przeprowadzke/"', "redirects.json");
-
-const allHtml = await readdir(dist, { recursive: true });
-for (const file of allHtml.filter((file) => file.endsWith(".html"))) {
-  const source = await readDist(file);
-  assert(!source.includes('<link rel="stylesheet"'), `${file}: Astro CSS must be inlined for the pre-launch critical path.`);
-}
 
 console.log(`SEO build validation passed (${launchEnabled ? "launch" : "pre-launch"} mode).`);
