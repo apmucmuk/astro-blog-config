@@ -35,6 +35,12 @@ export type RatingRequest = {
 export type CommentLinkRel = "dofollow" | "nofollow" | "sponsored";
 export type CommentStatus = "published" | "pending" | "spam";
 
+/**
+ * Public dynamic comments are deliberately delivered in small keyset pages.
+ * Static featured comments are a separate, at-most-five build-time section.
+ */
+export const PUBLIC_COMMENTS_PAGE_SIZE = 5;
+
 export type PublicComment = {
   id: string;
   parentId: string | null;

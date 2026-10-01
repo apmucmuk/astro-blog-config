@@ -2345,15 +2345,15 @@ Cursor должен быть opaque и однозначно кодировать
 Концептуально:
 
 ``` text
-page/cursor 1 → static featured TOP-5 + 20 newest non-featured
-page/cursor 2+ → следующие 20 non-featured по стабильному cursor
+page/cursor 1 → static featured TOP-5 + 5 newest non-featured
+page/cursor 2+ → следующие 5 non-featured по стабильному cursor
 featuredIds → исключены из всей dynamic pagination session
 ```
 
 Размер динамической порции v1:
 
 ``` text
-20 comments
+5 comments
 ```
 
 Нумерованные URL страниц комментариев не обязательны, если UX реализован
@@ -2511,7 +2511,7 @@ reports_count = 0
 Минимальный API:
 
 ``` text
-GET  /v1/comments?articleId=...&limit=20&cursor=...&excludeIds=...
+GET  /v1/comments?articleId=...&limit=5&cursor=...&excludeIds=...
 POST /v1/comments
 POST /v1/comments/{id}/helpful
 POST /v1/comments/{id}/report

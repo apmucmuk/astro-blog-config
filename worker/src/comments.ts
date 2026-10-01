@@ -12,6 +12,7 @@ import {
   type CreateCommentResponse,
   type ModerateCommentRequest,
   type PublicComment,
+  PUBLIC_COMMENTS_PAGE_SIZE,
 } from "../../src/core/api";
 import { ensureArticleStats, assertRuntimeArticleEnabled } from "./d1";
 import { verifyTurnstile } from "./turnstile";
@@ -249,7 +250,9 @@ export async function listComments(db: D1Database, env: Env, url: URL): Promise<
     throw new ApiError(400, "BAD_REQUEST", "articleId is required.");
   }
   await ensureArticleStats(db, env.SITE_ID, articleId);
-  const limit = Math.min(Number.parseInt(url.searchParams.get("limit") ?? "20", 10) || 20, 20);
+  // Public cursor sessions have one fixed, contract-owned batch size. Never
+  // let a client request turn the endpoint into an unbounded comments dump.
+  const limit = PUBLIC_COMMENTS_PAGE_SIZE;
   const cursor = decodeCursor(url.searchParams.get("cursor"));
   const excludeIds = parseExcludeIds(url.searchParams.get("excludeIds"));
   const excludeClause = excludeIds.length > 0 ? `AND id NOT IN (${excludeIds.map(() => "?").join(", ")})` : "";

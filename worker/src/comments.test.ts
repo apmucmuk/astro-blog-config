@@ -10,6 +10,7 @@ import {
   parseCreateCommentRequest,
   reportComment,
 } from "./comments";
+import { PUBLIC_COMMENTS_PAGE_SIZE } from "../../src/core/api";
 import type { D1Database, D1PreparedStatement, D1Result, Env } from "./types";
 
 type Row = Record<string, any>;
@@ -245,15 +246,55 @@ describe("comments stage 7", () => {
 
   it("uses keyset pagination and excludes featured ids before limit, including empty featured list", async () => {
     const local = fresh();
-    for (let i = 0; i < 4; i += 1) {
+    for (let i = 0; i < 6; i += 1) {
       await createComment(local.DB, local, { articleId: "art-tragarze-001", name: `Jan${i}`, body: `body ${i}`, turnstileToken: "test-pass" }, 10 + i);
     }
     const first = await listComments(local.DB, local, new URL("https://api.test/v1/comments?articleId=art-tragarze-001&limit=2&excludeIds="));
-    expect(first.items).toHaveLength(2);
+    expect(first.items).toHaveLength(PUBLIC_COMMENTS_PAGE_SIZE);
     const second = await listComments(local.DB, local, new URL(`https://api.test/v1/comments?articleId=art-tragarze-001&limit=2&cursor=${encodeURIComponent(first.nextCursor ?? "")}`));
-    expect(new Set([...first.items, ...second.items].map((item) => item.id)).size).toBe(4);
+    expect(second.items).toHaveLength(1);
+    expect(new Set([...first.items, ...second.items].map((item) => item.id)).size).toBe(6);
     const excluded = await listComments(local.DB, local, new URL(`https://api.test/v1/comments?articleId=art-tragarze-001&limit=3&excludeIds=${first.items[0].id}`));
     expect(excluded.items.map((item) => item.id)).not.toContain(first.items[0].id);
+  });
+
+  it("serves 20+ comments through fixed small cursor pages without featured duplicates or boundary gaps", async () => {
+    const local = fresh();
+    const createdIds: string[] = [];
+    for (let i = 0; i < 26; i += 1) {
+      const created = await createComment(
+        local.DB,
+        local,
+        { articleId: "art-tragarze-001", name: `Jan${i}`, body: `Komentarz testowy numer ${i}.`, turnstileToken: "test-pass" },
+        1_000 + Math.floor(i / 3),
+      );
+      if (created.status === "published") createdIds.push(created.comment.id);
+    }
+    const db = local.DB as CommentsDb;
+    const featuredIds = createdIds.slice(0, 5);
+    featuredIds.forEach((id, index) => { db.comments.get(id)!.helpful_count = 100 - index; });
+    const expected = [...db.comments.values()]
+      .filter((row) => row.status === "published" && !featuredIds.includes(row.id))
+      .sort((a, b) => b.created_at_ms - a.created_at_ms || String(b.id).localeCompare(String(a.id)))
+      .map((row) => row.id);
+
+    const pages: string[][] = [];
+    let cursor: string | null = null;
+    do {
+      const url = new URL("https://api.test/v1/comments?articleId=art-tragarze-001&limit=99&excludeIds=" + featuredIds.join(","));
+      if (cursor) url.searchParams.set("cursor", cursor);
+      const response = await listComments(local.DB, local, url);
+      expect(response.items).toHaveLength(cursor ? Math.min(PUBLIC_COMMENTS_PAGE_SIZE, expected.length - pages.flat().length) : PUBLIC_COMMENTS_PAGE_SIZE);
+      expect(response.items.map((item) => item.id).some((id) => featuredIds.includes(id))).toBe(false);
+      pages.push(response.items.map((item) => item.id));
+      cursor = response.nextCursor;
+    } while (cursor);
+
+    const received = pages.flat();
+    expect(pages).toHaveLength(Math.ceil(expected.length / PUBLIC_COMMENTS_PAGE_SIZE));
+    expect(new Set(received).size).toBe(expected.length);
+    expect(received).toEqual(expected);
+    expect(received).not.toContain(featuredIds[0]);
   });
 
   it("keeps comments_count consistent across moderation and delete transitions", async () => {

@@ -1,4 +1,4 @@
-import type { CommentsListResponse, PublicComment } from "@core/api";
+import { PUBLIC_COMMENTS_PAGE_SIZE, type CommentsListResponse, type PublicComment } from "@core/api";
 
 type CommentSurface = HTMLElement & { dataset: DOMStringMap };
 
@@ -53,7 +53,7 @@ export function mountComments(surface: CommentSurface): void {
   const load = async (reset = false) => {
     if (loading) return; loading = true;
     try {
-      const url = new URL("/v1/comments", apiUrl); url.searchParams.set("articleId", articleId); url.searchParams.set("limit", "20");
+      const url = new URL("/v1/comments", apiUrl); url.searchParams.set("articleId", articleId); url.searchParams.set("limit", String(PUBLIC_COMMENTS_PAGE_SIZE));
       if (excluded.length) url.searchParams.set("excludeIds", excluded.join(",")); if (!reset && cursor) url.searchParams.set("cursor", cursor);
       const response = await fetch(url, { credentials: "include" }); if (!response.ok) throw new Error(); const payload = await response.json() as CommentsListResponse;
       if (reset) list.replaceChildren(); payload.items.forEach((comment) => list.append(commentElement(comment, apiUrl, () => { void load(true); })));
