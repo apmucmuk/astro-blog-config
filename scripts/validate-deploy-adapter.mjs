@@ -82,6 +82,8 @@ const origin = `http://127.0.0.1:${address.port}`;
 try {
   const canonical = await fetch(`${origin}/blog/poradniki/jak-przygotowac-przeprowadzke/`);
   assert(canonical.status === 200, "Canonical article must return 200.");
+  assert((await fetch(`${origin}/uslugi/`)).status === 200, "Services root must return 200.");
+  assert((await fetch(`${origin}/narzedzia/`)).status === 200, "Tools root must return 200.");
   const old = await fetch(`${origin}/blog/poradniki/stary-plan-przeprowadzki/`, { redirect: "manual" });
   assert(old.status === 301 && old.headers.get("location") === "/blog/poradniki/jak-przygotowac-przeprowadzke/", "Historical redirect must return 301 + Location.");
   const pageOne = await fetch(`${origin}/blog/page/1/`, { redirect: "manual" });

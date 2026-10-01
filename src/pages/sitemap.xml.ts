@@ -10,6 +10,8 @@ export async function GET() {
   const people = (await getCollection("people")).filter((person) => !person.data.noindex);
   const urls = [
     "/",
+    "/uslugi/",
+    "/narzedzia/",
     "/redakcja/",
     ...people.map((person) => personPath({ segments: routeSegments, personSlug: person.data.slug })),
     ...articles.map((article) => {

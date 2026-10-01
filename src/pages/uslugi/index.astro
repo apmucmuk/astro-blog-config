@@ -1,0 +1,48 @@
+---
+import { breadcrumbJsonLd, seoMetadata } from "@core/seo/metadata";
+import { launchServices } from "@project/launch-sections";
+import { navigation } from "@project/navigation";
+import { projectConfig } from "@project/site.config";
+import BaseLayout from "@theme/layouts/BaseLayout.astro";
+
+const metadata = seoMetadata({
+  title: "Usługi przeprowadzkowe | tragarze.pl",
+  description: "Zakres planowanych usług przeprowadzkowych i pomocy tragarzy.",
+  pathname: "/uslugi/",
+  siteUrl: projectConfig.siteUrl,
+});
+const breadcrumbs = [
+  { name: "Strona główna", url: projectConfig.siteUrl },
+  { name: "Usługi", url: metadata.canonical },
+];
+---
+
+<BaseLayout title={metadata.title} description={metadata.description} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
+  <Fragment slot="head">
+    <meta name="description" content={metadata.description} />
+    <meta name="robots" content={metadata.robots} />
+    <link rel="canonical" href={metadata.canonical} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd(breadcrumbs))} />
+  </Fragment>
+  <section class="hero">
+    <div class="hero__inner container">
+      <nav class="breadcrumb" aria-label="Breadcrumbs">
+        {breadcrumbs.map((item, index) => <a href={item.url}>{item.name}{index < breadcrumbs.length - 1 ? " / " : ""}</a>)}
+      </nav>
+      <h1>Usługi przeprowadzkowe</h1>
+      <p class="lede">Poznaj zakres usług, które będą publikowane w serwisie tragarze.pl.</p>
+    </div>
+  </section>
+  <section class="page-section container" aria-labelledby="services-heading">
+    <h2 id="services-heading">Planowane usługi</h2>
+    <div class="card-grid">
+      {launchServices.map((service) => (
+        <article class="card" data-service={service.slug}>
+          <h3>{service.title}</h3>
+          <p>{service.description}</p>
+          <p><strong>W przygotowaniu</strong></p>
+        </article>
+      ))}
+    </div>
+  </section>
+</BaseLayout>

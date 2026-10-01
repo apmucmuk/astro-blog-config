@@ -53,6 +53,19 @@ const editorial = await readDist("redakcja/index.html");
 assertIncludes(editorial, "<title>Redakcja tragarze.pl</title>", "redakcja/index.html");
 assertIncludes(editorial, '"@type":"BreadcrumbList"', "redakcja/index.html");
 
+const services = await readDist("uslugi/index.html");
+assertIncludes(services, "<h1>Usługi przeprowadzkowe</h1>", "uslugi/index.html");
+assertIncludes(services, 'rel="canonical" href="https://tragarze.pl/uslugi/"', "uslugi/index.html");
+assertIncludes(services, 'data-service="przeprowadzki"', "uslugi/index.html");
+assertExcludes(services, 'href="/uslugi/przeprowadzki/"', "uslugi/index.html");
+assertIncludes(services, '"@type":"BreadcrumbList"', "uslugi/index.html");
+
+const tools = await readDist("narzedzia/index.html");
+assertIncludes(tools, "<h1>Narzędzia</h1>", "narzedzia/index.html");
+assertIncludes(tools, 'rel="canonical" href="https://tragarze.pl/narzedzia/"', "narzedzia/index.html");
+assertIncludes(tools, "Obecnie nie ma jeszcze zatwierdzonych narzędzi", "narzedzia/index.html");
+assertIncludes(tools, '"@type":"BreadcrumbList"', "narzedzia/index.html");
+
 const notFound = await readDist("404.html");
 assertIncludes(notFound, "<h1>Nie znaleziono strony</h1>", "404.html");
 assertIncludes(notFound, 'meta name="robots" content="noindex,follow"', "404.html");
@@ -61,6 +74,8 @@ assertExcludes(notFound, 'rel="canonical"', "404.html");
 const sitemap = await readDist("sitemap.xml");
 assertIncludes(sitemap, "https://tragarze.pl/blog/poradniki/jak-przygotowac-przeprowadzke/", "sitemap.xml");
 assertIncludes(sitemap, "https://tragarze.pl/redakcja/jan-kowalski/", "sitemap.xml");
+assertIncludes(sitemap, "https://tragarze.pl/uslugi/", "sitemap.xml");
+assertIncludes(sitemap, "https://tragarze.pl/narzedzia/", "sitemap.xml");
 assertExcludes(sitemap, "szkic-przeprowadzki", "sitemap.xml");
 assertExcludes(sitemap, "zaplanowana-przeprowadzka", "sitemap.xml");
 assertExcludes(sitemap, "404", "sitemap.xml");
