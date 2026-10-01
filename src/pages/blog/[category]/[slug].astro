@@ -114,11 +114,8 @@ const jsonLd = [
 const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
 ---
 
-<BaseLayout title={metadata.title} description={metadata.description} locale={article.data.locale} siteName={projectConfig.name} navigation={navigation} socialImage={article.data.socialImage?.src ?? article.data.image.src}>
+<BaseLayout title={metadata.title} description={metadata.description} locale={article.data.locale} siteName={projectConfig.name} navigation={navigation} canonical={metadata.canonical} robots={metadata.robots} socialImage={article.data.socialImage?.src ?? article.data.image.src} socialImageAlt={article.data.image.alt}>
   <Fragment slot="head">
-    <meta name="description" content={metadata.description} />
-    <meta name="robots" content={metadata.robots} />
-    <link rel="canonical" href={metadata.canonical} />
     {alternates.map((alternate) => <link rel="alternate" hreflang={alternate.hreflang} href={alternate.href} />)}
     <link rel="alternate" hreflang="x-default" href={metadata.canonical} />
     {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}

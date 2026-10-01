@@ -3,7 +3,7 @@ import BaseLayout from "@theme/layouts/BaseLayout.astro";
 import { projectConfig } from "@project/site.config";
 import { navigation } from "@project/navigation";
 ---
-<BaseLayout title={`Moderacja komentarzy - ${projectConfig.name}`} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
+<BaseLayout title={`Moderacja komentarzy - ${projectConfig.name}`} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation} canonical={false} robots="noindex,follow">
   <section class="container page-section" data-admin>
     <h1>Moderacja komentarzy</h1>
     <label>Kolejka <select data-admin-status><option value="pending">Oczekujące</option><option value="published">Opublikowane</option><option value="spam">Spam</option></select></label>

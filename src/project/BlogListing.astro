@@ -3,17 +3,13 @@ import BaseLayout from "@theme/layouts/BaseLayout.astro";
 import { projectConfig } from "./site.config";
 import { navigation } from "./navigation";
 import { buildListing, listingPageSize } from "./listing";
-import { collectionPage, listingUrl } from "@features/stats/collection";
+import { collectionPage } from "@features/stats/collection";
 import ListingSurface from "./ListingSurface.astro";
 const { page = 1 } = Astro.props;
 const { entries, manifestUrl } = await buildListing();
 const { items, total } = collectionPage(entries, "newest", page, listingPageSize, projectConfig.locale);
 ---
-<BaseLayout title={`Blog - ${projectConfig.name}`} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
-  <Fragment slot="head">
-    <meta name="description" content="Poradniki o przygotowaniu i organizacji przeprowadzki." />
-    <link rel="canonical" href={new URL(listingUrl("/blog/", page, "newest"), projectConfig.siteUrl)} />
-  </Fragment>
+<BaseLayout title={`Blog - ${projectConfig.name}`} description="Poradniki o przygotowaniu i organizacji przeprowadzki." locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
   <section class="container page-section">
     <h1>Blog</h1>
     <ListingSurface base="/blog/" {items} {total} {page} {manifestUrl} allowedSorts={["newest", "popularNow", "rating", "comments", "updated"]} />

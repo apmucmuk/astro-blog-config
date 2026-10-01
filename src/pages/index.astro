@@ -2,9 +2,10 @@
 import BaseLayout from "@theme/layouts/BaseLayout.astro";
 import { projectConfig } from "@project/index";
 import { navigation } from "@project/navigation";
+import { seoConfig } from "@project/seo.config";
 ---
 
-<BaseLayout title={projectConfig.name} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
+<BaseLayout title={projectConfig.name} description={seoConfig.defaultDescription} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
   <section class="hero">
     <div class="hero__inner container">
       <h1>{projectConfig.name}</h1>

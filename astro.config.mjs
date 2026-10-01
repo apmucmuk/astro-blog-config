@@ -5,4 +5,7 @@ import react from "@astrojs/react";
 export default defineConfig({
   integrations: [mdx(), react()],
   output: "static",
+  build: {
+    inlineStylesheets: process.env.DEPLOY_ENV === "production" ? "always" : "auto",
+  },
 });

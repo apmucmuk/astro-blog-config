@@ -54,11 +54,8 @@ const jsonLd = [
 ];
 ---
 
-<BaseLayout title={metadata.title} description={metadata.description} locale={person.data.locale} siteName={projectConfig.name} navigation={navigation}>
+<BaseLayout title={metadata.title} description={metadata.description} locale={person.data.locale} siteName={projectConfig.name} navigation={navigation} canonical={metadata.canonical} robots={metadata.robots}>
   <Fragment slot="head">
-    <meta name="description" content={metadata.description} />
-    <meta name="robots" content={metadata.robots} />
-    <link rel="canonical" href={metadata.canonical} />
     {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}
   </Fragment>
   <section class="profile container">

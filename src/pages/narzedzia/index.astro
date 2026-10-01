@@ -16,11 +16,8 @@ const breadcrumbs = [
 ];
 ---
 
-<BaseLayout title={metadata.title} description={metadata.description} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
+<BaseLayout title={metadata.title} description={metadata.description} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation} canonical={metadata.canonical} robots={metadata.robots}>
   <Fragment slot="head">
-    <meta name="description" content={metadata.description} />
-    <meta name="robots" content={metadata.robots} />
-    <link rel="canonical" href={metadata.canonical} />
     <script is:inline type="application/ld+json" set:html={JSON.stringify(breadcrumbJsonLd(breadcrumbs))} />
   </Fragment>
   <section class="hero">

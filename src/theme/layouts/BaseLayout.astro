@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { defaultRobots } from "@core/seo/launch";
 
 type Props = {
   title?: string;
@@ -8,10 +9,28 @@ type Props = {
   siteName: string;
   navigation: ReadonlyArray<{ label: string; href: string }>;
   socialImage?: string;
+  socialImageAlt?: string;
+  canonical?: string | false;
+  robots?: string;
 };
 
-const { title, description, locale, siteName, navigation, socialImage = "/images/tragarze-default-og.png" } = Astro.props;
+const {
+  title,
+  description,
+  locale,
+  siteName,
+  navigation,
+  socialImage = "/images/tragarze-default-og.png",
+  socialImageAlt,
+  canonical,
+  robots = defaultRobots,
+} = Astro.props;
 const socialOrigin = import.meta.env.PUBLIC_SITE_URL ?? "https://tragarze.pl";
+const canonicalUrl = canonical === false ? false : canonical ?? new URL(Astro.url.pathname, socialOrigin).toString();
+const socialImageUrl = new URL(socialImage, socialOrigin).toString();
+const pageTitle = title ?? siteName;
+const pageDescription = description ?? siteName;
+const pageSocialImageAlt = socialImageAlt ?? pageTitle;
 ---
 
 <!doctype html>
@@ -20,9 +39,22 @@ const socialOrigin = import.meta.env.PUBLIC_SITE_URL ?? "https://tragarze.pl";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <title>{title ?? siteName}</title>
-    {description && <meta name="description" content={description} />}
-    <meta property="og:image" content={new URL(socialImage, socialOrigin).toString()} />
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDescription} />
+    <meta name="robots" content={robots} />
+    {canonicalUrl && <link rel="canonical" href={canonicalUrl} />}
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    {canonicalUrl && <meta property="og:url" content={canonicalUrl} />}
+    <meta property="og:image" content={socialImageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={pageSocialImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDescription} />
+    <meta name="twitter:image" content={socialImageUrl} />
     <slot name="head" />
   </head>
   <body>

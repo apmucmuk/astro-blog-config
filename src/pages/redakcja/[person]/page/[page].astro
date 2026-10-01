@@ -24,8 +24,7 @@ const { entries, manifestUrl } = await buildListing();
 const authored = collectionPage(entries, "newest", page, listingPageSize, projectConfig.locale, null, (entry) => entry.authors.includes(person.data.id));
 const metadata = seoMetadata({ title: `${person.data.name} - redakcja tragarze.pl`, description: person.data.bioShort, pathname: listingUrl(base, page, "newest"), siteUrl: projectConfig.siteUrl, noindex: person.data.noindex });
 ---
-<BaseLayout title={metadata.title} description={metadata.description} locale={person.data.locale} siteName={projectConfig.name} navigation={navigation}>
-  <Fragment slot="head"><meta name="description" content={metadata.description} /><link rel="canonical" href={metadata.canonical} /></Fragment>
+<BaseLayout title={metadata.title} description={metadata.description} locale={person.data.locale} siteName={projectConfig.name} navigation={navigation} canonical={metadata.canonical} robots={metadata.robots}>
   <section class="profile container"><h1>{person.data.name}</h1><h2>Publikacje autora</h2>
     <ListingSurface {base} items={authored.items} total={authored.total} {page} {manifestUrl} person={person.data.id} allowedSorts={["newest", "popular", "comments", "updated"]} />
   </section>

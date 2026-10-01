@@ -13,10 +13,7 @@ const metadata = seoMetadata({
 });
 ---
 
-<BaseLayout title={metadata.title} description={metadata.description} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
-  <Fragment slot="head">
-    <meta name="robots" content={metadata.robots} />
-  </Fragment>
+<BaseLayout title={metadata.title} description={metadata.description} locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation} canonical={metadata.canonical} robots={metadata.robots}>
   <section class="page-section" data-search-root>
     <div class="article-container">
       <p class="eyebrow">Baza wiedzy</p>

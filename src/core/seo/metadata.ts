@@ -1,4 +1,5 @@
 import { canonicalUrl } from "./hreflang";
+import { defaultRobots } from "./launch";
 
 export type SeoMetadataInput = {
   title: string;
@@ -13,7 +14,7 @@ export function seoMetadata(input: SeoMetadataInput) {
     title: input.title,
     description: input.description,
     canonical: canonicalUrl(input.pathname, input.siteUrl),
-    robots: input.noindex ? "noindex,follow" : "index,follow",
+    robots: input.noindex ? "noindex,follow" : defaultRobots,
   };
 }
 

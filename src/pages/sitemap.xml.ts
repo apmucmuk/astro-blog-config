@@ -4,8 +4,14 @@ import { articlePath, personPath } from "@core/routing/routes";
 import { projectConfig } from "@project/site.config";
 import { routeSegments } from "@project/routing.config";
 import categories from "../content/data/categories.json";
+import { seoConfig } from "@project/seo.config";
 
 export async function GET() {
+  if (!seoConfig.launchEnabled) {
+    return new Response('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>\n', {
+      headers: { "Content-Type": "application/xml; charset=utf-8" },
+    });
+  }
   const articles = filterPublished(await getCollection("blog")).filter((article) => !article.data.noindex);
   const people = (await getCollection("people")).filter((person) => !person.data.noindex);
   const urls = [

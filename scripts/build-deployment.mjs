@@ -21,7 +21,7 @@ async function loadPublicDeploymentEnv(deploymentEnvironment) {
   }
 
   return Object.fromEntries(source.split(/\r?\n/).flatMap((line) => {
-    const match = line.match(/^\s*(PUBLIC_[A-Z0-9_]+)\s*=\s*(.*?)\s*$/);
+    const match = line.match(/^\s*(PUBLIC_[A-Z0-9_]+|SEO_LAUNCH_ENABLED)\s*=\s*(.*?)\s*$/);
     if (!match) return [];
     const [, name, rawValue] = match;
     const value = rawValue.replace(/^(?:"([\s\S]*)"|'([\s\S]*)')$/, "$1$2");
@@ -39,7 +39,7 @@ await new Promise((resolve, reject) => snapshot.on("exit", (code) => code === 0 
 
 const child = spawn(process.execPath, [pnpmCli, "build"], {
   cwd: process.cwd(),
-  env: { ...process.env, ...publicDeploymentEnv, DEPLOY_ENV: environment },
+  env: { ...publicDeploymentEnv, ...process.env, DEPLOY_ENV: environment },
   stdio: "inherit",
 });
 

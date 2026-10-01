@@ -3364,6 +3364,25 @@ keyword combinations. Каждая indexable page должна иметь сам
 Structured data описывает реально видимый/существующий content и не
 используется как замена содержанию страницы.
 
+## 52.1. Pre-launch indexability gate
+
+До явного SEO launch PROJECT использует один build-time switch:
+
+```text
+SEO_LAUNCH_ENABLED=false
+```
+
+В этом режиме каждая HTML страница получает `noindex,follow`, при этом
+canonical URL остаются production canonical, а crawler может загрузить
+документ и увидеть directive. `robots.txt` не заменяет этот directive и
+не должен блокировать crawl. Sitemap остаётся технически доступным, но
+не содержит URL, пока все public documents global-noindex.
+
+Включение indexing выполняется только reviewed изменением
+`SEO_LAUNCH_ENABLED=true` в environment configuration с новым build/deploy.
+Оно восстанавливает normal per-page robots policy; routes, которые сами
+являются `noindex`, остаются `noindex`.
+
 ------------------------------------------------------------------------
 
 <a id="section-53"></a>
@@ -3397,6 +3416,9 @@ RSS
 ## Sitemap
 
 В sitemap включается только опубликованный indexable canonical content.
+
+Если активен global pre-launch `noindex`, sitemap должен быть пустым,
+а не рекламировать URL, которые одновременно запрещены к indexing.
 
 Не включать:
 

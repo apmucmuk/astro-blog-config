@@ -102,6 +102,7 @@ Comments and rating follow the authoritative SPEC exactly. No reviews system is 
 
 - Polish is the default locale and is not prefixed.
 - Canonicals, hreflang, sitemap, RSS, pagination and sort-query behavior follow SPEC.
+- Pre-launch indexability is centrally fail-closed: `SEO_LAUNCH_ENABLED=false` makes all HTML pages `noindex,follow` and leaves sitemap empty while retaining canonical production URLs and crawlable `robots.txt`. Only a reviewed environment change to `SEO_LAUNCH_ENABLED=true`, followed by build/deploy, enables normal per-page indexability; route-specific noindex remains in force.
 - City-service pages may self-canonical when content is genuinely unique; otherwise canonical strategy must be explicit in PROJECT SEO config.
 - No district SEO pages.
 - Custom 404 required with real HTTP 404 behavior.
