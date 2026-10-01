@@ -155,9 +155,10 @@ const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
     </div>
     <section class="comment-form article-container" aria-labelledby="comment-title">
       <h2 id="comment-title">Dodaj komentarz</h2>
-      <form data-comment-form data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-turnstile-site-key={turnstileSiteKey}>
-        <label>Imię <input name="name" required maxlength="40" autocomplete="name" /></label>
-        <label>Komentarz <textarea name="body" required maxlength="1500" rows="5"></textarea></label>
+      <form novalidate data-comment-form data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-turnstile-site-key={turnstileSiteKey}>
+        <label>Imię <input name="name" required minlength="2" maxlength="40" autocomplete="name" /></label>
+        <label>Komentarz <textarea name="body" required minlength="10" maxlength="1500" rows="5" aria-describedby="comment-character-count"></textarea></label>
+        <p id="comment-character-count" data-comment-character-count aria-live="polite">0 / 1500</p>
         <div data-turnstile-widget></div>
         <p data-comment-status role="status" aria-live="polite"></p>
         <button type="submit">Wyślij komentarz</button>

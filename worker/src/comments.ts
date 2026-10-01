@@ -20,6 +20,11 @@ import type { D1Database, Env } from "./types";
 const urlPattern = /https?:\/\/[^\s<>"']+/gi;
 const idPattern = /^[A-Za-z0-9_-]{1,80}$/;
 const linkRelValues = new Set(["dofollow", "nofollow", "sponsored"]);
+export const COMMENT_NAME_MIN_LENGTH = 2;
+export const COMMENT_NAME_MAX_LENGTH = 40;
+export const COMMENT_BODY_MIN_LENGTH = 10;
+export const COMMENT_BODY_MAX_LENGTH = 1500;
+const DUPLICATE_COMMENT_WINDOW_MS = 60_000;
 
 type CommentRow = {
   id: string;
@@ -103,11 +108,13 @@ const moderateCommentSchema = {
 export function parseCreateCommentRequest(value: unknown): CreateCommentRequest {
   const parsed = assertStrictObject(value, createCommentSchema);
   const fields = [];
-  if (parsed.name.trim().length > 40) {
-    fields.push({ field: "name", message: "Name must be at most 40 characters." });
+  const name = parsed.name.trim();
+  const body = parsed.body.trim();
+  if (name.length < COMMENT_NAME_MIN_LENGTH || name.length > COMMENT_NAME_MAX_LENGTH) {
+    fields.push({ field: "name", message: `Name must be between ${COMMENT_NAME_MIN_LENGTH} and ${COMMENT_NAME_MAX_LENGTH} characters.` });
   }
-  if (parsed.body.trim().length > 1500) {
-    fields.push({ field: "body", message: "Body must be at most 1500 characters." });
+  if (body.length < COMMENT_BODY_MIN_LENGTH || body.length > COMMENT_BODY_MAX_LENGTH) {
+    fields.push({ field: "body", message: `Body must be between ${COMMENT_BODY_MIN_LENGTH} and ${COMMENT_BODY_MAX_LENGTH} characters.` });
   }
   if (parsed.parentId && !idPattern.test(parsed.parentId)) {
     fields.push({ field: "parentId", message: "Invalid parentId." });
@@ -118,7 +125,7 @@ export function parseCreateCommentRequest(value: unknown): CreateCommentRequest 
   if (fields.length > 0) {
     throw new ApiError(400, "VALIDATION_ERROR", "Request body failed validation.", fields);
   }
-  return { ...parsed, name: parsed.name.trim(), body: parsed.body.trim() };
+  return { ...parsed, name, body };
 }
 
 export function parseModerateCommentRequest(value: unknown): ModerateCommentRequest {
@@ -131,7 +138,7 @@ function countLinks(body: string): number {
 
 function classifyComment(body: string): Pick<CommentRow, "status" | "moderation_reason" | "link_rel"> {
   const links = countLinks(body);
-  if (/\b(?:viagra|casino|crypto bonus)\b/i.test(body)) {
+  if (/\b(?:viagra|casino|crypto bonus)\b/i.test(body) || /(.)\1{7,}/u.test(body) || /\b([\p{L}\p{N}][\p{L}\p{N}'’-]*)(?:\s+\1){5,}\b/iu.test(body)) {
     return { status: "spam", moderation_reason: "spam_pattern", link_rel: null };
   }
   if (links === 0) {
@@ -221,6 +228,21 @@ async function resolveRootParent(db: D1Database, siteId: string, articleId: stri
   return parent.parent_id ?? parent.id;
 }
 
+async function assertNoRecentDuplicate(db: D1Database, siteId: string, articleId: string, body: string, nowMs: number): Promise<void> {
+  const duplicate = await db
+    .prepare(
+      `SELECT id
+       FROM comments
+       WHERE site_id = ? AND article_id = ? AND body = ? AND created_at_ms >= ?
+       LIMIT 1`,
+    )
+    .bind(siteId, articleId, body, nowMs - DUPLICATE_COMMENT_WINDOW_MS)
+    .first<{ id: string }>();
+  if (duplicate) {
+    throw new ApiError(409, "DUPLICATE", "A matching comment was submitted recently.");
+  }
+}
+
 export async function listComments(db: D1Database, env: Env, url: URL): Promise<CommentsListResponse> {
   const articleId = url.searchParams.get("articleId");
   if (!articleId || !idPattern.test(articleId)) {
@@ -294,6 +316,7 @@ export async function createComment(db: D1Database, env: Env, request: CreateCom
   await verifyTurnstile(request.turnstileToken, env);
   await ensureArticleStats(db, env.SITE_ID, request.articleId, nowMs);
   const parentId = await resolveRootParent(db, env.SITE_ID, request.articleId, request.parentId);
+  await assertNoRecentDuplicate(db, env.SITE_ID, request.articleId, request.body, nowMs);
   const classification = classifyComment(request.body);
   const id = createCommentId();
   const result = await db

@@ -1998,6 +1998,11 @@ Wyślij
 Frontend не должен позволять обычному пользователю ввести больше лимита.
 Backend всё равно повторно валидирует ограничения и не доверяет клиенту.
 
+После trim `Imię` обязано содержать 2--40 символов, а `Komentarz` ---
+10--1500 символов. Строки только из whitespace невалидны. Frontend
+показывает динамический счётчик `N / 1500`, но Worker остаётся
+authoritative validation.
+
 Пользовательский HTML запрещён. Текст комментария хранится как plain
 text. URL могут распознаваться и превращаться в безопасные `<a>` только
 при рендеринге.
@@ -2022,9 +2027,9 @@ text. URL могут распознаваться и превращаться в
 Невалидные запросы не сохраняются вообще:
 
 ``` text
-name > 40             → reject 400/422
-body > 1500           → reject 400/422
-empty body            → reject
+name < 2 or > 40      → reject 400/422
+body < 10 or > 1500   → reject 400/422
+whitespace-only input → reject
 invalid article_id    → reject
 invalid site_id       → reject
 invalid Origin        → reject
@@ -11220,8 +11225,8 @@ auth.
 
 ``` text
 plain-text body
-author_name 1..40
-body 1..1500
+author_name 2..40
+body 10..1500
 0 URL OR exactly 1 valid http/https URL
 2+ URL impossible in published state
 link_rel null if 0 URL

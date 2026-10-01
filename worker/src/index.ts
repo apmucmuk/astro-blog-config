@@ -82,15 +82,27 @@ function attachVisitorCookie(response: Response, setCookie?: string): Response {
   return response;
 }
 
-async function readStrictJson(request: Request): Promise<unknown> {
+const COMMENT_JSON_MAX_BYTES = 16 * 1024;
+const SMALL_JSON_MAX_BYTES = 4 * 1024;
+
+async function readStrictJson(request: Request, maxBytes: number): Promise<unknown> {
   const contentType = request.headers.get("Content-Type") ?? "";
   if (!contentType.toLowerCase().startsWith("application/json")) {
     throw new ApiError(415, "UNSUPPORTED_MEDIA_TYPE", "Expected application/json request body.");
   }
+  const declaredLength = Number(request.headers.get("Content-Length"));
+  if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+    throw new ApiError(413, "PAYLOAD_TOO_LARGE", "Request body is too large.");
+  }
 
   try {
-    return await request.json();
-  } catch {
+    const raw = await request.text();
+    if (new TextEncoder().encode(raw).byteLength > maxBytes) {
+      throw new ApiError(413, "PAYLOAD_TOO_LARGE", "Request body is too large.");
+    }
+    return JSON.parse(raw);
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
     throw new ApiError(400, "BAD_REQUEST", "Malformed JSON request body.");
   }
 }
@@ -123,7 +135,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (url.pathname === "/v1/read") {
     if (request.method !== "POST") return methodNotAllowed(true);
-    const input = parseReadInput(await readStrictJson(request));
+    const input = parseReadInput(await readStrictJson(request, SMALL_JSON_MAX_BYTES));
     const visitor = getOrCreateVisitorIdentity(request, env);
     await requireReadCapacity(env, visitor.visitorId!, input.articleId);
     const response = mutationJsonResponse(await recordRead(env.DB, env.SITE_ID, input.articleId));
@@ -138,7 +150,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     if (request.method === "POST") {
       const visitor = getOrCreateVisitorIdentity(request, env);
       await requireMutationCapacity(env, env.COMMENT_CREATE_RATE_LIMITER, visitor.visitorId!, "comment-create", env.RATE_LIMIT_COMMENTS);
-      return attachVisitorCookie(mutationJsonResponse(await createComment(env.DB, env, parseCreateCommentRequest(await readStrictJson(request)))), visitor.setCookie);
+      return attachVisitorCookie(mutationJsonResponse(await createComment(env.DB, env, parseCreateCommentRequest(await readStrictJson(request, COMMENT_JSON_MAX_BYTES)))), visitor.setCookie);
     }
     return methodNotAllowed(mutation);
   }
@@ -170,7 +182,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (adminCommentId) {
     if (request.method === "PATCH") {
-      return mutationJsonResponse(await moderateComment(env.DB, adminCommentId, parseModerateCommentRequest(await readStrictJson(request))));
+      return mutationJsonResponse(await moderateComment(env.DB, adminCommentId, parseModerateCommentRequest(await readStrictJson(request, SMALL_JSON_MAX_BYTES))));
     }
     if (request.method === "DELETE") {
       await deleteComment(env.DB, adminCommentId);
@@ -189,7 +201,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     if (request.method === "POST") {
       const visitor = getOrCreateVisitorIdentity(request, env);
       await requireMutationCapacity(env, env.RATING_RATE_LIMITER, visitor.visitorId!, `rating:${ratingArticleId}`, env.RATE_LIMIT_RATINGS);
-      const body = parseRatingRequest(await readStrictJson(request));
+      const body = parseRatingRequest(await readStrictJson(request, SMALL_JSON_MAX_BYTES));
       const response = attachVisitorCookie(mutationJsonResponse(
         await submitRating(env.DB, env.SITE_ID, ratingArticleId, visitor.visitorId ?? "", body.value),
       ), visitor.setCookie);

@@ -181,4 +181,21 @@ describe("worker runtime foundation", () => {
     expect(malformed.headers.get("Cache-Control")).toBe("no-store");
   });
 
+  it("rejects an oversized comment JSON body before database work", async () => {
+    const response = await worker.fetch(
+      new Request("https://api.tragarze.pl/v1/comments", {
+        method: "POST",
+        headers: {
+          Origin: "https://tragarze.pl",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ articleId: "art-tragarze-001", name: "Jan", body: "x".repeat(17_000), turnstileToken: "test-pass" }),
+      }),
+      env,
+    );
+    expect(response.status).toBe(413);
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
+    expect((await response.json()).error.code).toBe("PAYLOAD_TOO_LARGE");
+  });
+
 });

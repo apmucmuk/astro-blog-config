@@ -60,6 +60,12 @@ class CommentsDb implements D1Database {
     if (query.includes("FROM content_articles")) return this.articles.get(`${values[0]}:${values[1]}`) ?? null;
     if (query.includes("FROM article_stats")) return this.stats.get(`${values[0]}:${values[1]}`) ?? null;
     if (query.includes("FROM comments") && query.includes("WHERE id = ?")) return this.comments.get(values[0] as string) ?? null;
+    if (query.includes("FROM comments") && query.includes("body = ?")) {
+      const [siteId, articleId, body, minimumCreatedAt] = values as [string, string, string, number];
+      return [...this.comments.values()].find((row) =>
+        row.site_id === siteId && row.article_id === articleId && row.body === body && row.created_at_ms >= minimumCreatedAt,
+      ) ?? null;
+    }
     return null;
   }
   all(query: string, values: unknown[]): Row[] {
@@ -184,16 +190,47 @@ describe("comments stage 7", () => {
     expect((local.DB as CommentsDb).stats.get("tragarze-pl:art-tragarze-001")?.comments_count).toBe(1);
   });
 
-  it("validates body limits, malformed payload, Turnstile failure and missing/disabled article without writes", async () => {
-    expect(() => parseCreateCommentRequest({ articleId: "art-tragarze-001", name: "Jan", body: "x".repeat(1500), turnstileToken: "test-pass" })).not.toThrow();
-    expect(() => parseCreateCommentRequest({ articleId: "art-tragarze-001", name: "Jan", body: "x".repeat(1501), turnstileToken: "test-pass" })).toThrow();
-    expect(() => parseCreateCommentRequest({ articleId: "art-tragarze-001", name: "Jan", body: "ok", turnstileToken: "test-pass", extra: true })).toThrow();
+  it("validates trimmed name and body boundaries before any D1 write", async () => {
+    const base = { articleId: "art-tragarze-001", turnstileToken: "test-pass" };
+    for (const name of ["", "A", "  A  ", "x".repeat(41)]) {
+      expect(() => parseCreateCommentRequest({ ...base, name, body: "To jest poprawny komentarz." })).toThrow();
+    }
+    for (const name of ["Jo", "x".repeat(40), "  Jan  "]) {
+      expect(() => parseCreateCommentRequest({ ...base, name, body: "To jest poprawny komentarz." })).not.toThrow();
+    }
+    for (const body of ["", " ".repeat(12), "x".repeat(9), "x".repeat(1501)]) {
+      expect(() => parseCreateCommentRequest({ ...base, name: "Jan", body })).toThrow();
+    }
+    expect(parseCreateCommentRequest({ ...base, name: "  Jan  ", body: "  krótki komentarz po polsku  " })).toMatchObject({
+      name: "Jan",
+      body: "krótki komentarz po polsku",
+    });
+    expect(() => parseCreateCommentRequest({ ...base, name: "Jan", body: "x".repeat(10) })).not.toThrow();
+    expect(() => parseCreateCommentRequest({ ...base, name: "Jan", body: "x".repeat(1500) })).not.toThrow();
+    expect(() => parseCreateCommentRequest({ ...base, name: "Jan", body: "poprawny tekst", extra: true })).toThrow();
     const local = fresh();
-    await expect(createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Jan", body: "ok", turnstileToken: "bad" }, 10)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    await expect(createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Jan", body: "poprawny tekst", turnstileToken: "bad" }, 10)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     expect((local.DB as CommentsDb).stats.size).toBe(0);
-    await expect(createComment(local.DB, local, { articleId: "missing", name: "Jan", body: "ok", turnstileToken: "test-pass" }, 10)).rejects.toMatchObject({ code: "NOT_FOUND" });
-    await expect(createComment(local.DB, local, { articleId: "disabled", name: "Jan", body: "ok", turnstileToken: "test-pass" }, 10)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(createComment(local.DB, local, { articleId: "missing", name: "Jan", body: "poprawny tekst", turnstileToken: "test-pass" }, 10)).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(createComment(local.DB, local, { articleId: "disabled", name: "Jan", body: "poprawny tekst", turnstileToken: "test-pass" }, 10)).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect((local.DB as CommentsDb).comments.size).toBe(0);
+  });
+
+  it("keeps clean comments published, links pending, and obvious repeated spam out of public state", async () => {
+    const local = fresh();
+    await expect(createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Jan", body: "To jest normalny polski komentarz.", turnstileToken: "test-pass" }, 10)).resolves.toMatchObject({ status: "published" });
+    await expect(createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Ola", body: "Polecam https://example.com", turnstileToken: "test-pass" }, 20)).resolves.toMatchObject({ status: "pending" });
+    await expect(createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Ada", body: "!!!!!!!!!! pilne", turnstileToken: "test-pass" }, 30)).resolves.toMatchObject({ status: "spam" });
+    await expect(createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Ada", body: "kup kup kup kup kup kup teraz", turnstileToken: "test-pass" }, 40)).resolves.toMatchObject({ status: "spam" });
+  });
+
+  it("rejects only a recent exact duplicate without a D1 write", async () => {
+    const local = fresh();
+    const request = { articleId: "art-tragarze-001", name: "Jan", body: "To jest poprawny komentarz.", turnstileToken: "test-pass" };
+    await createComment(local.DB, local, request, 10);
+    await expect(createComment(local.DB, local, request, 20)).rejects.toMatchObject({ status: 409, code: "DUPLICATE" });
+    expect((local.DB as CommentsDb).comments.size).toBe(1);
+    await expect(createComment(local.DB, local, request, 60_011)).resolves.toMatchObject({ status: "published" });
   });
 
   it("normalizes reply-to-reply to the root parent", async () => {
@@ -233,7 +270,7 @@ describe("comments stage 7", () => {
     expect((local.DB as CommentsDb).stats.get("tragarze-pl:art-tragarze-001")?.comments_count).toBe(1);
     await deleteComment(local.DB, pendingId);
     expect((local.DB as CommentsDb).stats.get("tragarze-pl:art-tragarze-001")?.comments_count).toBe(0);
-    const pending2 = await createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Jan", body: "https://example.com", turnstileToken: "test-pass" }, 20);
+    const pending2 = await createComment(local.DB, local, { articleId: "art-tragarze-001", name: "Jan", body: "https://other.example.com", turnstileToken: "test-pass" }, 20);
     expect(pending2.status).toBe("pending");
     await deleteComment(local.DB, [...(local.DB as CommentsDb).comments.keys()][0]);
     expect((local.DB as CommentsDb).stats.get("tragarze-pl:art-tragarze-001")?.comments_count).toBe(0);
