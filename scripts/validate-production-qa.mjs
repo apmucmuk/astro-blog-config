@@ -21,7 +21,9 @@ for (const sensitiveName of ["TURNSTILE_SECRET_KEY", "CLOUDFLARE_ACCOUNT_ID", "C
 }
 
 const headers = await readFile(path.join(dist, "_headers"), "utf8");
-assert(!headers.includes("unsafe-eval") && !headers.includes("script-src *") && !headers.includes("connect-src *"), "Deploy CSP is overly permissive.");
+const csp = headers.match(/^  Content-Security-Policy: (.+)$/m)?.[1] ?? "";
+assert(csp.includes("script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com"), "Deploy CSP must permit Pagefind WebAssembly without enabling general unsafe-eval.");
+assert(!csp.includes("'unsafe-eval'") && !csp.includes("script-src *") && !csp.includes("connect-src *"), "Deploy CSP is overly permissive.");
 for (const file of htmlFiles) {
   const source = await readFile(file, "utf8");
   for (const script of source.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)) {
