@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { chromium } from "playwright-core";
 
 const chromePath = process.env.CHROME_PATH ?? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-const baseUrl = "http://localhost:4321";
+const baseUrl = "http://127.0.0.1:4323";
 const articlePath = "/blog/poradniki/jak-przygotowac-przeprowadzke/";
 const widths = [320, 390, 430, 768, 1280];
 
@@ -27,7 +27,7 @@ async function waitForUrl(url, timeoutMs = 15000) {
 }
 
 async function startPreview() {
-  const child = spawn(process.execPath, ["scripts/run-astro.mjs", "preview", "--", "--host", "127.0.0.1"], {
+  const child = spawn(process.execPath, ["scripts/run-astro.mjs", "preview", "--host", "127.0.0.1", "--port", "4323"], {
     cwd: process.cwd(),
     stdio: ["ignore", "pipe", "pipe"],
   });

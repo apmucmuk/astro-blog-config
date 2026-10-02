@@ -18,8 +18,9 @@ const tokensCss = await read("src/theme/styles/tokens.css");
 const articleSource = await read("src/pages/blog/[category]/[slug].astro");
 const articleHtml = await read("dist/blog/poradniki/jak-przygotowac-przeprowadzke/index.html");
 
-assert(tokensCss.includes("color-scheme: light dark"), "tokens must declare light/dark color-scheme.");
-assert(tokensCss.includes("@media (prefers-color-scheme: dark)"), "dark scheme must use system preference.");
+assert(tokensCss.includes(':root[data-theme="dark"]'), "tokens must support an explicit dark preference.");
+assert(tokensCss.includes("@media (prefers-color-scheme: dark)"), "system preference must remain the no-JS fallback.");
+assert(tokensCss.includes("--color-input") && tokensCss.includes("--color-success") && tokensCss.includes("--color-danger"), "theme must expose semantic input/status tokens.");
 assert(globalCss.includes(".skip-link"), "global CSS must include skip-link styling.");
 assert(globalCss.includes(":focus-visible"), "global CSS must include visible focus styling.");
 assert(globalCss.includes("min-width: 320px"), "layout must explicitly support the 320px floor.");
@@ -33,5 +34,8 @@ assert(!articleSource.includes("client:"), "Stage 4 must not introduce client hy
 assert(!articleHtml.includes("astro-island"), "production HTML must not include hydrated Astro islands.");
 assert(articleHtml.includes("Przejdź do treści"), "production HTML must include skip navigation.");
 assert(articleHtml.includes("site-nav"), "production HTML must include header navigation.");
+assert(articleHtml.includes('src="/scripts/theme.js"'), "production HTML must load the external theme bootstrap.");
+assert(articleHtml.indexOf('/scripts/theme.js') < articleHtml.indexOf('stylesheet'), "theme bootstrap must precede the stylesheet to prevent a theme flash.");
+assert(articleHtml.includes("data-theme-toggle") && articleHtml.includes("data-theme-system"), "header must contain the compact light/dark and system controls.");
 
 console.log("Theme static validation passed.");

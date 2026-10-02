@@ -11,7 +11,7 @@
     "typecheck": "node scripts/run-astro.mjs check",
     "content:validate": "node scripts/validate-content.mjs",
     "seo:validate": "node scripts/validate-seo-build.mjs",
-    "theme:validate": "node scripts/validate-theme-build.mjs && node scripts/validate-theme-browser.mjs",
+    "theme:validate": "node scripts/validate-theme-build.mjs && node scripts/validate-theme-browser.mjs && node scripts/validate-theme-preferences.mjs",
     "reads:validate": "node scripts/validate-reads-browser.mjs",
     "search:index": "node scripts/build-pagefind.mjs",
     "search:validate": "node scripts/validate-search-build.mjs",

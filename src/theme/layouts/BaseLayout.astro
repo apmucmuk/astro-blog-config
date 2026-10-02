@@ -38,6 +38,7 @@ const pageSocialImageAlt = socialImageAlt ?? pageTitle;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script is:inline src="/scripts/theme.js"></script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>{pageTitle}</title>
     <meta name="description" content={pageDescription} />
@@ -66,6 +67,14 @@ const pageSocialImageAlt = socialImageAlt ?? pageTitle;
           <nav class="site-nav" aria-label="Główna nawigacja">
             {navigation.map((item) => <a href={item.href}>{item.label}</a>)}
           </nav>
+          <div class="theme-controls" role="group" aria-label="Motyw kolorystyczny">
+            <button class="theme-control" type="button" data-theme-toggle aria-label="Zmień motyw" title="Zmień motyw">
+              <span aria-hidden="true" data-theme-icon>☾</span><span class="sr-only" data-theme-toggle-label>Zmień motyw</span>
+            </button>
+            <button class="theme-control theme-control--system" type="button" data-theme-system aria-pressed="true" title="Użyj ustawienia systemowego">
+              <span aria-hidden="true">System</span><span class="sr-only">Użyj ustawienia systemowego</span>
+            </button>
+          </div>
         </div>
       </header>
       <main id="main" class="site-main" tabindex="-1">
