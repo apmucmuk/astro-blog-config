@@ -14,6 +14,7 @@ import type { FeaturedComments } from "@features/comments/featured";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import CommentBody from "@features/comments/CommentBody.astro";
+import { articleToc } from "@features/article/toc";
 
 let featuredComments: FeaturedComments = {};
 try { featuredComments = JSON.parse(await readFile(path.join(process.cwd(), "worker/registry/featured-comments.json"), "utf8")); } catch { /* Deployment build generates the optional snapshot. */ }
@@ -49,7 +50,7 @@ export async function getStaticPaths() {
 const { article, articles, category, people } = Astro.props;
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY ?? "";
 const searchIndexable = isSearchIndexable(article);
-const { Content } = await render(article);
+const { Content, headings } = await render(article);
 const canonical = articleCanonical({
   locale: article.data.locale,
   segments: routeSegments,
@@ -119,6 +120,9 @@ const jsonLd = [
   }),
 ];
 const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
+const tocEntries = articleToc(headings, article.data.toc);
+const showToc = tocEntries.length > 0;
+const shareMailto = `mailto:?subject=${encodeURIComponent(article.data.title)}&body=${encodeURIComponent(canonical)}`;
 ---
 
 <BaseLayout title={metadata.title} description={metadata.description} locale={article.data.locale} siteName={projectConfig.name} navigation={navigation} canonical={metadata.canonical} robots={metadata.robots} socialImage={article.data.socialImage?.src ?? article.data.image.src} socialImageAlt={article.data.image.alt}>
@@ -135,13 +139,9 @@ const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
         ))}
       </nav>
       <p class="eyebrow">{category.name}</p>
-      <div class="article-meta">
+      <div class="article-meta article-byline">
         {authorProfiles.map((author) => <a href={author.url}>{author.name}</a>)}
-        <time datetime={article.data.publishDate.toISOString()}>{article.data.publishDate.toLocaleDateString("pl-PL")}</time>
-        {article.data.updatedDate && <time datetime={article.data.updatedDate.toISOString()}>Zaktualizowano: {article.data.updatedDate.toLocaleDateString("pl-PL")}</time>}
-        <span>{readingMinutes} min czytania</span>
       </div>
-      <p class="article-stats" data-stats-id={article.data.id}><span hidden>Wyświetlenia: <span data-reads></span></span><span>Komentarze: <span data-comments-count>0</span></span></p>
       <div class="hero__inner">
         <h1 data-pagefind-meta="title">{article.data.title}</h1>
         <p class="lede" data-pagefind-meta="description">{article.data.description}</p>
@@ -156,17 +156,37 @@ const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
         fetchpriority="high"
       />
     </header>
-    <div class="article-body article-container" data-read-article data-site-id={projectConfig.siteId} data-article-id={article.data.id} data-api-url={projectConfig.apiUrl} data-dedup-seconds={runtimeConfig.readDedupWindowSeconds}>
+    <div class="article-layout article-container">
+      <details class="article-aside-shell" data-article-aside>
+        <summary class="article-aside-trigger" aria-controls={`article-aside-${article.data.id}`}>Spis treści i informacje</summary>
+        <aside id={`article-aside-${article.data.id}`} class="article-aside" tabindex="-1" aria-label="Informacje o artykule">
+          {showToc && <nav class="article-toc" aria-label="Spis treści"><h2>Spis treści</h2><ol>{tocEntries.map((heading) => <li class:list={["article-toc__item", { "article-toc__item--nested": heading.depth === 3 }]}><a href={`#${heading.slug}`}>{heading.text}</a></li>)}</ol></nav>}
+          {showToc && <hr class="article-aside__separator" />}
+          <section class="article-aside__info" data-stats-id={article.data.id} data-rating data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-rating-empty="Brak ocen" data-rating-singular="ocena" data-rating-plural="ocen" data-rating-load-error="Nie udało się wczytać oceny. Możesz spróbować ponownie." data-rating-save-error="Nie udało się zapisać oceny. Spróbuj ponownie." data-rating-thanks="Dziękujemy za ocenę." aria-labelledby={`article-info-${article.data.id}`}>
+            <h2 id={`article-info-${article.data.id}`} class="sr-only">Informacje o artykule</h2>
+            <dl class="article-info-list">
+              <div><dt>Czas czytania</dt><dd>{readingMinutes} min czytania</dd></div>
+              <div hidden><dt>Wyświetlenia</dt><dd data-reads>0</dd></div>
+              <div><dt>Komentarze</dt><dd><a href="#comments"><span data-comments-count>0</span></a></dd></div>
+              <div><dt>Opublikowano</dt><dd><time datetime={article.data.publishDate.toISOString()}>{article.data.publishDate.toLocaleDateString("pl-PL")}</time></dd></div>
+              {article.data.updatedDate && <div><dt>Zaktualizowano</dt><dd><time datetime={article.data.updatedDate.toISOString()}>{article.data.updatedDate.toLocaleDateString("pl-PL")}</time></dd></div>}
+            </dl>
+            <section class="article-rating" aria-labelledby={`rating-title-${article.data.id}`}>
+              <h2 id={`rating-title-${article.data.id}`}>Oceń artykuł</h2>
+              <p class="article-rating__summary" data-rating-summary>{rating.ratingValue === null ? "Brak ocen" : `${rating.ratingValue.toLocaleString("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 5 · ${rating.ratingCount} ocen`}</p>
+              <fieldset class="article-rating__choices" disabled aria-describedby={`rating-status-${article.data.id}`}><legend class="sr-only">Wybierz ocenę od 1 do 5</legend>{[1, 2, 3, 4, 5].map((value) => <label class="article-rating__choice"><input type="radio" name={`rating-${article.data.id}`} value={value} /><span aria-hidden="true">{value} ★</span><span class="sr-only">{value} z 5</span></label>)}</fieldset>
+              <p class="article-rating__mine" data-rating-mine></p><p id={`rating-status-${article.data.id}`} class="article-rating__status" data-rating-status role="status" aria-live="polite">Wczytywanie ocen…</p>
+              <noscript><p>Oceny są dostępne po włączeniu JavaScript.</p></noscript>
+            </section>
+            <section class="article-share" aria-labelledby={`share-title-${article.data.id}`}><h2 id={`share-title-${article.data.id}`}>Udostępnij</h2><p><button type="button" data-copy-link>Skopiuj link</button> <a href={shareMailto}>E-mail</a></p><p data-share-status role="status" aria-live="polite"></p></section>
+          </section>
+        </aside>
+      </details>
+      <div class="article-flow">
+    <div class="article-body" data-read-article data-site-id={projectConfig.siteId} data-article-id={article.data.id} data-api-url={projectConfig.apiUrl} data-dedup-seconds={runtimeConfig.readDedupWindowSeconds}>
         <Content />
     </div>
-    <section class="article-rating article-container" data-rating data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-rating-empty="Brak ocen" data-rating-singular="ocena" data-rating-plural="ocen" data-rating-load-error="Nie udało się wczytać oceny. Możesz spróbować ponownie." data-rating-save-error="Nie udało się zapisać oceny. Spróbuj ponownie." data-rating-thanks="Dziękujemy za ocenę." aria-labelledby="rating-title">
-      <h2 id="rating-title">Oceń artykuł</h2>
-      <p class="article-rating__summary" data-rating-summary>{rating.ratingValue === null ? "Brak ocen" : `${rating.ratingValue.toLocaleString("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 5 · ${rating.ratingCount} ocen`}</p>
-      <fieldset class="article-rating__choices" disabled aria-describedby="rating-status"><legend class="sr-only">Wybierz ocenę od 1 do 5</legend>{[1, 2, 3, 4, 5].map((value) => <label class="article-rating__choice"><input type="radio" name={`rating-${article.data.id}`} value={value} /><span aria-hidden="true">{value} ★</span><span class="sr-only">{value} z 5</span></label>)}</fieldset>
-      <p class="article-rating__mine" data-rating-mine></p><p id="rating-status" class="article-rating__status" data-rating-status role="status" aria-live="polite">Wczytywanie ocen…</p>
-      <noscript><p>Oceny są dostępne po włączeniu JavaScript.</p></noscript>
-    </section>
-    <section class="comment-form article-container" aria-labelledby="comment-title">
+    <section class="comment-form" aria-labelledby="comment-title">
       <h2 id="comment-title">Dodaj komentarz</h2>
       <form novalidate data-comment-form data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-turnstile-site-key={turnstileSiteKey}>
         <label>Imię <input name="name" required minlength="2" maxlength="40" autocomplete="name" /></label>
@@ -177,11 +197,13 @@ const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
         <button type="submit">Wyślij komentarz</button>
       </form>
     </section>
-    <section class="comments article-container" data-comments data-stats-id={article.data.id} data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-featured-ids={featured.map((comment) => comment.id).join(",")} aria-labelledby="comments-title">
+    <section id="comments" class="comments" data-comments data-stats-id={article.data.id} data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-featured-ids={featured.map((comment) => comment.id).join(",")} aria-labelledby="comments-title">
       <h2 id="comments-title">Komentarze (<span data-comments-count>0</span>)</h2>
       {featured.length > 0 && <section aria-labelledby="featured-comments-title"><h3 id="featured-comments-title">Wyróżnione</h3><ul class="comments-list">{featured.map((comment) => <li class="comment-item" data-comment-id={comment.id}><p><strong>{comment.name}</strong> · <time datetime={comment.createdAt}>{new Date(comment.createdAt).toLocaleDateString("pl-PL")}</time></p><p><CommentBody body={comment.body} linkRel={comment.linkRel} /></p><p><button type="button" data-comment-action="helpful">Pomocne ({comment.helpfulCount})</button> <button type="button" data-comment-action="report">Zgłoś</button></p></li>)}</ul></section>}
       <h3>Najnowsze</h3><ul class="comments-list" data-comments-list></ul><button type="button" data-comments-more hidden>Pokaż więcej</button>
     </section>
+      </div>
+    </div>
   </article>
 </BaseLayout>
 <script>
@@ -195,4 +217,18 @@ const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
   document.querySelectorAll<HTMLFormElement>("[data-comment-form]").forEach(mountCommentForm);
   document.querySelectorAll<HTMLElement>("[data-comments]").forEach(mountComments);
   document.querySelectorAll<HTMLElement>("[data-rating]").forEach(mountRating);
+  document.querySelectorAll<HTMLDetailsElement>("[data-article-aside]").forEach((details) => {
+    const trigger = details.querySelector<HTMLElement>("summary");
+    const panel = details.querySelector<HTMLElement>("aside");
+    const setExpanded = () => trigger?.setAttribute("aria-expanded", String(details.open));
+    details.addEventListener("toggle", setExpanded); setExpanded();
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape" && details.open) { details.open = false; trigger?.focus(); } });
+    details.querySelectorAll<HTMLAnchorElement>(".article-toc a").forEach((link) => link.addEventListener("click", () => { if (matchMedia("(max-width: 899px)").matches) details.open = false; }));
+    details.querySelector<HTMLButtonElement>("[data-copy-link]")?.addEventListener("click", async () => {
+      const status = details.querySelector<HTMLElement>("[data-share-status]");
+      try { await navigator.clipboard.writeText(location.href); if (status) status.textContent = "Link skopiowany."; }
+      catch { if (status) status.textContent = "Nie udało się skopiować linku."; }
+    });
+    panel?.addEventListener("transitionend", () => { if (details.open && matchMedia("(max-width: 899px)").matches) panel.focus(); }, { once: true });
+  });
 </script>

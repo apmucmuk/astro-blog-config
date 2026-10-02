@@ -41,5 +41,10 @@ const inlineBootstrap = articleHtml.match(/<script>(\(\(\)=>\{const k="tragarze-
 assert(inlineBootstrap, "production HTML must inline the deterministic pre-paint theme bootstrap.");
 assert(articleHtml.indexOf(inlineBootstrap) < articleHtml.indexOf('stylesheet'), "inline theme bootstrap must precede the stylesheet to prevent a theme flash.");
 assert(articleHtml.includes("data-theme-toggle") && articleHtml.includes("data-theme-system"), "header must contain the compact light/dark and system controls.");
+assert(articleHtml.includes('class="article-aside-shell"'), "article must have one responsive aside shell.");
+assert(articleHtml.includes("Spis treści i informacje"), "mobile must expose one article aside trigger.");
+assert((articleHtml.match(/data-rating/g) ?? []).length >= 5 && (articleHtml.match(/data-rating data-api-url/g) ?? []).length === 1, "article must retain one canonical rating interaction.");
+assert(!articleHtml.includes('class="article-toc"'), "the representative short article must retain information without rendering an empty TOC.");
+assert(articleHtml.includes("Czas czytania") && articleHtml.includes("Komentarze") && articleHtml.includes("Udostępnij"), "article aside must contain the required information sections.");
 
 console.log("Theme static validation passed.");
