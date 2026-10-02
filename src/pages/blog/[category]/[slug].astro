@@ -15,6 +15,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import CommentBody from "@features/comments/CommentBody.astro";
 import { articleToc } from "@features/article/toc";
+import ArticleToc from "@features/article/ArticleToc.astro";
 
 let featuredComments: FeaturedComments = {};
 try { featuredComments = JSON.parse(await readFile(path.join(process.cwd(), "worker/registry/featured-comments.json"), "utf8")); } catch { /* Deployment build generates the optional snapshot. */ }
@@ -158,9 +159,9 @@ const shareMailto = `mailto:?subject=${encodeURIComponent(article.data.title)}&b
     </header>
     <div class="article-layout article-container">
       <details class="article-aside-shell" data-article-aside>
-        <summary class="article-aside-trigger" aria-controls={`article-aside-${article.data.id}`}>Spis treści i informacje</summary>
+        <summary class="article-aside-trigger" aria-controls={`article-aside-${article.data.id}`}>{showToc ? "Spis treści i informacje" : "Informacje o artykule"}</summary>
         <aside id={`article-aside-${article.data.id}`} class="article-aside" tabindex="-1" aria-label="Informacje o artykule">
-          {showToc && <nav class="article-toc" aria-label="Spis treści"><h2>Spis treści</h2><ol>{tocEntries.map((heading) => <li class:list={["article-toc__item", { "article-toc__item--nested": heading.depth === 3 }]}><a href={`#${heading.slug}`}>{heading.text}</a></li>)}</ol></nav>}
+          {showToc && <nav class="article-toc" aria-label="Spis treści"><h2>Spis treści</h2><ArticleToc entries={tocEntries} /></nav>}
           {showToc && <hr class="article-aside__separator" />}
           <section class="article-aside__info" data-stats-id={article.data.id} data-rating data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-rating-empty="Brak ocen" data-rating-singular="ocena" data-rating-plural="ocen" data-rating-load-error="Nie udało się wczytać oceny. Możesz spróbować ponownie." data-rating-save-error="Nie udało się zapisać oceny. Spróbuj ponownie." data-rating-thanks="Dziękujemy za ocenę." aria-labelledby={`article-info-${article.data.id}`}>
             <h2 id={`article-info-${article.data.id}`} class="sr-only">Informacje o artykule</h2>

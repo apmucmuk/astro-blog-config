@@ -11,12 +11,17 @@ describe("article TOC", () => {
     { depth: 2, slug: "three", text: "Three" },
   ];
 
-  it("keeps H2/H3 hierarchy only when at least three H2 exist", () => {
-    expect(articleToc(headings, true).map((heading) => heading.slug)).toEqual(["one", "one-a", "two", "two-a", "three"]);
+  it("keeps H2 through H6 hierarchy", () => {
+    expect(articleToc(headings, true)[0].children[0].children[0].slug).toBe("ignored");
   });
 
-  it("omits the TOC for short or opted-out articles", () => {
-    expect(articleToc(headings.slice(0, 4), true)).toEqual([]);
+  it("handles skipped levels and headings without H2", () => {
+    expect(articleToc([{ depth: 2, slug: "h2", text: "H2" }, { depth: 4, slug: "h4", text: "H4" }, { depth: 6, slug: "h6", text: "H6" }], true)[0].children[0].children[0].slug).toBe("h6");
+    expect(articleToc([{ depth: 3, slug: "h3", text: "H3" }], true)[0].slug).toBe("h3");
+  });
+
+  it("omits only opted-out or heading-free articles", () => {
+    expect(articleToc([], true)).toEqual([]);
     expect(articleToc(headings, false)).toEqual([]);
   });
 });

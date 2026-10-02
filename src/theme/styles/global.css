@@ -247,8 +247,8 @@ p {
 .article-aside-trigger { display: none; }
 .article-aside { color: var(--color-text); }
 .article-toc h2, .article-rating h2, .article-share h2 { margin-top: 0; font-size: 1.1rem; }
-.article-toc ol { display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
-.article-toc__item--nested { padding-inline-start: var(--space-4); font-size: 0.94rem; }
+.article-toc__list { display: grid; gap: var(--space-2); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.article-toc__list--nested { margin: var(--space-2) 0 0; padding-inline-start: var(--space-4); font-size: 0.94rem; }
 .article-toc a { color: var(--color-muted); text-decoration: none; }
 .article-toc a:hover { color: var(--color-text); text-decoration: underline; }
 .article-aside__separator { margin: var(--space-5) 0; border: 0; border-top: 1px solid var(--color-border); }
@@ -272,6 +272,7 @@ p {
   .article-layout { grid-template-columns: minmax(0, 1fr) minmax(16.25rem, 18rem); width: min(100% - 2rem, calc(var(--article) + 18rem + var(--space-6))); }
   .article-flow { grid-column: 1; }
   .article-aside-shell { grid-column: 2; grid-row: 1; }
+  .article-aside-shell:not([open]) > .article-aside { display: block; }
   .article-aside { position: sticky; top: var(--space-5); max-height: calc(100vh - 2 * var(--space-5)); overflow: auto; padding-inline-end: var(--space-2); }
 }
 

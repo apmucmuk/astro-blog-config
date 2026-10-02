@@ -1,0 +1,8 @@
+---
+import type { TocNode } from "./toc";
+import ArticleToc from "./ArticleToc.astro";
+const { entries, nested = false } = Astro.props as { entries: TocNode[]; nested?: boolean };
+---
+<ol class:list={["article-toc__list", { "article-toc__list--nested": nested }]}>
+  {entries.map((entry) => <li><a href={`#${entry.slug}`}>{entry.text}</a>{entry.children.length > 0 && <ArticleToc entries={entry.children} nested />}</li>)}
+</ol>
