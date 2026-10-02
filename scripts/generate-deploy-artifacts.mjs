@@ -1,4 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
@@ -25,13 +26,33 @@ const apiOrigin = process.env.PUBLIC_API_URL ?? "https://api.tragarze.pl";
 if (environment === "preview" && apiOrigin === "https://api.tragarze.pl") {
   throw new Error("Preview deployment artifacts must use a non-production PUBLIC_API_URL.");
 }
+async function htmlFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const nested = await Promise.all(entries.map((entry) => {
+    const target = path.join(directory, entry.name);
+    return entry.isDirectory() ? htmlFiles(target) : (entry.name.endsWith(".html") ? [target] : []);
+  }));
+  return nested.flat();
+}
+
+const builtHtml = await htmlFiles(dist);
+const bootstrapBodies = new Set();
+for (const file of builtHtml) {
+  const source = await readFile(file, "utf8");
+  const scripts = [...source.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+    .filter((script) => !script[1].includes("src=") && !script[1].includes('type="application/ld+json"') && script[2]);
+  if (scripts.length !== 1) throw new Error(`Expected one executable inline theme bootstrap in ${path.relative(dist, file)}.`);
+  bootstrapBodies.add(scripts[0][2]);
+}
+if (bootstrapBodies.size !== 1) throw new Error("The inline theme bootstrap must have identical bytes across static HTML output.");
+const themeBootstrapHash = createHash("sha256").update([...bootstrapBodies][0], "utf8").digest("base64");
 const headers = [
   "/*",
   "  Cache-Control: public, max-age=0, must-revalidate",
   "  X-Content-Type-Options: nosniff",
   "  Referrer-Policy: strict-origin-when-cross-origin",
   "  Permissions-Policy: camera=(), geolocation=(), microphone=()",
-  `  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'wasm-unsafe-eval' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; frame-src https://challenges.cloudflare.com; connect-src 'self' ${apiOrigin} https://challenges.cloudflare.com`,
+  `  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'sha256-${themeBootstrapHash}' 'wasm-unsafe-eval' https://challenges.cloudflare.com; style-src 'self'; img-src 'self' data:; frame-src https://challenges.cloudflare.com; connect-src 'self' ${apiOrigin} https://challenges.cloudflare.com`,
   ...(environment === "production" ? ["  Strict-Transport-Security: max-age=31536000; includeSubDomains"] : ["  X-Robots-Tag: noindex, nofollow"]),
   "",
   "/_astro/*",

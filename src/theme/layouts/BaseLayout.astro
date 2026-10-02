@@ -1,6 +1,7 @@
 ---
 import "../styles/global.css";
 import { defaultRobots } from "@core/seo/launch";
+import { themeBootstrap } from "../theme-bootstrap";
 
 type Props = {
   title?: string;
@@ -38,7 +39,8 @@ const pageSocialImageAlt = socialImageAlt ?? pageTitle;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script is:inline src="/scripts/theme.js"></script>
+    <script is:inline set:html={themeBootstrap}></script>
+    <script is:inline src="/scripts/theme.js" defer></script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>{pageTitle}</title>
     <meta name="description" content={pageDescription} />
