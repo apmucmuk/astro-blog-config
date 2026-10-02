@@ -221,7 +221,7 @@ const shareMailto = `mailto:?subject=${encodeURIComponent(article.data.title)}&b
     const trigger = details.querySelector<HTMLElement>("summary");
     const panel = details.querySelector<HTMLElement>("aside");
     const setExpanded = () => trigger?.setAttribute("aria-expanded", String(details.open));
-    details.addEventListener("toggle", setExpanded); setExpanded();
+    details.addEventListener("toggle", () => { setExpanded(); if (details.open && matchMedia("(max-width: 899px)").matches) panel?.focus(); }); setExpanded();
     document.addEventListener("keydown", (event) => { if (event.key === "Escape" && details.open) { details.open = false; trigger?.focus(); } });
     details.querySelectorAll<HTMLAnchorElement>(".article-toc a").forEach((link) => link.addEventListener("click", () => { if (matchMedia("(max-width: 899px)").matches) details.open = false; }));
     details.querySelector<HTMLButtonElement>("[data-copy-link]")?.addEventListener("click", async () => {
@@ -229,6 +229,5 @@ const shareMailto = `mailto:?subject=${encodeURIComponent(article.data.title)}&b
       try { await navigator.clipboard.writeText(location.href); if (status) status.textContent = "Link skopiowany."; }
       catch { if (status) status.textContent = "Nie udało się skopiować linku."; }
     });
-    panel?.addEventListener("transitionend", () => { if (details.open && matchMedia("(max-width: 899px)").matches) panel.focus(); }, { once: true });
   });
 </script>
