@@ -10,5 +10,7 @@ describe("article comment form markup", () => {
     expect(source).toContain('aria-describedby="comment-character-count"');
     expect(source).toContain('data-comment-character-count');
     expect(source).toContain("0 / 1500");
+    expect(source).toContain('data-comments data-stats-id={article.data.id}');
+    expect(source).toContain('Komentarze (<span data-comments-count>0</span>)');
   });
 });
