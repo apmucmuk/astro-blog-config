@@ -36,6 +36,7 @@ assert(articleHtml.includes("Przejdź do treści"), "production HTML must includ
 assert(articleHtml.includes("site-nav"), "production HTML must include header navigation.");
 assert(articleHtml.includes('src="/scripts/theme.js" defer'), "production HTML must load the deferred theme interaction controller.");
 assert(!articleHtml.includes('<script src="/scripts/theme.js"></script>'), "theme must not retain the synchronous external bootstrap.");
+assert(articleHtml.indexOf('/scripts/theme.js') > articleHtml.lastIndexOf('</footer>'), "deferred theme interaction controller must stay outside the initial head render path.");
 const inlineBootstrap = articleHtml.match(/<script>(\(\(\)=>\{const k="tragarze-theme-preference"[\s\S]*?\}\)\(\);)<\/script>/)?.[1];
 assert(inlineBootstrap, "production HTML must inline the deterministic pre-paint theme bootstrap.");
 assert(articleHtml.indexOf(inlineBootstrap) < articleHtml.indexOf('stylesheet'), "inline theme bootstrap must precede the stylesheet to prevent a theme flash.");
