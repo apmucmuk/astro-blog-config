@@ -15,6 +15,7 @@ describe("batch snapshot consumer", () => {
     vi.stubGlobal("fetch", fetcher);
     const results = await Promise.all(Array.from({ length: 20 }, () => fetchSnapshot("https://batch.test")));
     expect(fetcher).toHaveBeenCalledTimes(1);
+    expect((fetcher.mock.calls as unknown as Array<[string]>)[0][0]).toBe("https://batch.test/v1/stats?snapshotVersion=2");
     expect(results.every((result) => result?.articles.length === 1)).toBe(true);
   });
   it("returns a static fallback on network or invalid snapshot failure", async () => {

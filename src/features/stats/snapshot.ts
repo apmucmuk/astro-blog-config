@@ -19,7 +19,10 @@ export function parseSnapshot(value: unknown): StatsSnapshot {
 
 const requests = new Map<string, Promise<StatsSnapshot | null>>();
 function snapshotUrl(apiUrl: string): string {
-  return new URL("/v1/stats", apiUrl).href;
+  const url = new URL("/v1/stats", apiUrl);
+  // Separates this no-store snapshot from the former four-hour browser cache entry.
+  url.searchParams.set("snapshotVersion", "2");
+  return url.href;
 }
 
 export function invalidateSnapshot(apiUrl: string): void {
