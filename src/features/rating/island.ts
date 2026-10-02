@@ -42,9 +42,8 @@ export function mountRating(surface: HTMLElement): void {
     void fetch(endpoint, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ value }) })
       .then(async (response) => {
         const payload: unknown = await response.json(); if (!response.ok || !isRatingResponse(payload)) throw new Error("Rating rejected");
-        rating = payload; render(); status.textContent = "Dziękujemy za ocenę.";
+        rating = payload; render(); status.textContent = ratingThanks;
       }).catch(() => { render(); status.textContent = ratingSaveError; })
-      .then(() => { if (status.textContent === "") status.textContent = ratingThanks; })
       .finally(() => { fieldset.disabled = false; });
   });
   void load();
