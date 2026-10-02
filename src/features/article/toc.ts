@@ -1,6 +1,10 @@
 export type TocHeading = { depth: number; slug: string; text: string };
 export type TocNode = TocHeading & { children: TocNode[] };
 
+export function articleAsideLabel(hasToc: boolean) {
+  return hasToc ? "Spis treści i informacje" : "Informacje o artykule";
+}
+
 export function articleToc(headings: readonly TocHeading[], enabled: boolean): TocNode[] {
   if (!enabled) return [];
   const roots: TocNode[] = [];

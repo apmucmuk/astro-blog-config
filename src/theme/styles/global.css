@@ -272,7 +272,6 @@ p {
   .article-layout { grid-template-columns: minmax(0, 1fr) minmax(16.25rem, 18rem); width: min(100% - 2rem, calc(var(--article) + 18rem + var(--space-6))); }
   .article-flow { grid-column: 1; }
   .article-aside-shell { grid-column: 2; grid-row: 1; }
-  .article-aside-shell:not([open]) > .article-aside { display: block; }
   .article-aside { position: sticky; top: var(--space-5); max-height: calc(100vh - 2 * var(--space-5)); overflow: auto; padding-inline-end: var(--space-2); }
 }
 

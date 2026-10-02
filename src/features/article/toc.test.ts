@@ -1,18 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { articleToc } from "./toc";
+import { articleAsideLabel, articleToc } from "./toc";
 
 describe("article TOC", () => {
   const headings = [
     { depth: 2, slug: "one", text: "One" },
     { depth: 3, slug: "one-a", text: "One A" },
-    { depth: 4, slug: "ignored", text: "Ignored" },
+    { depth: 4, slug: "one-a-i", text: "One A I" },
+    { depth: 5, slug: "one-a-i-a", text: "One A I A" },
+    { depth: 6, slug: "one-a-i-a-i", text: "One A I A I" },
     { depth: 2, slug: "two", text: "Two" },
     { depth: 3, slug: "two-a", text: "Two A" },
     { depth: 2, slug: "three", text: "Three" },
   ];
 
-  it("keeps H2 through H6 hierarchy", () => {
-    expect(articleToc(headings, true)[0].children[0].children[0].slug).toBe("ignored");
+  it("keeps the complete H2 through H6 hierarchy", () => {
+    const tree = articleToc(headings, true);
+    expect(tree[0].children[0].children[0].children[0].children[0].slug).toBe("one-a-i-a-i");
+  });
+
+  it("shows a TOC for a single H2", () => {
+    expect(articleToc([{ depth: 2, slug: "only-h2", text: "Only H2" }], true).map((entry) => entry.slug)).toEqual(["only-h2"]);
   });
 
   it("handles skipped levels and headings without H2", () => {
@@ -23,5 +30,10 @@ describe("article TOC", () => {
   it("omits only opted-out or heading-free articles", () => {
     expect(articleToc([], true)).toEqual([]);
     expect(articleToc(headings, false)).toEqual([]);
+  });
+
+  it("uses the TOC-aware mobile label while article information remains independently available", () => {
+    expect(articleAsideLabel(true)).toBe("Spis treści i informacje");
+    expect(articleAsideLabel(false)).toBe("Informacje o artykule");
   });
 });

@@ -14,7 +14,7 @@ import type { FeaturedComments } from "@features/comments/featured";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import CommentBody from "@features/comments/CommentBody.astro";
-import { articleToc } from "@features/article/toc";
+import { articleAsideLabel, articleToc } from "@features/article/toc";
 import ArticleToc from "@features/article/ArticleToc.astro";
 
 let featuredComments: FeaturedComments = {};
@@ -158,8 +158,8 @@ const shareMailto = `mailto:?subject=${encodeURIComponent(article.data.title)}&b
       />
     </header>
     <div class="article-layout article-container">
-      <details class="article-aside-shell" data-article-aside>
-        <summary class="article-aside-trigger" aria-controls={`article-aside-${article.data.id}`}>{showToc ? "Spis treści i informacje" : "Informacje o artykule"}</summary>
+      <details class="article-aside-shell" data-article-aside open>
+        <summary class="article-aside-trigger" aria-controls={`article-aside-${article.data.id}`}>{articleAsideLabel(showToc)}</summary>
         <aside id={`article-aside-${article.data.id}`} class="article-aside" tabindex="-1" aria-label="Informacje o artykule">
           {showToc && <nav class="article-toc" aria-label="Spis treści"><h2>Spis treści</h2><ArticleToc entries={tocEntries} /></nav>}
           {showToc && <hr class="article-aside__separator" />}
@@ -221,6 +221,7 @@ const shareMailto = `mailto:?subject=${encodeURIComponent(article.data.title)}&b
   document.querySelectorAll<HTMLDetailsElement>("[data-article-aside]").forEach((details) => {
     const trigger = details.querySelector<HTMLElement>("summary");
     const panel = details.querySelector<HTMLElement>("aside");
+    if (matchMedia("(max-width: 899px)").matches) details.open = false;
     const setExpanded = () => trigger?.setAttribute("aria-expanded", String(details.open));
     details.addEventListener("toggle", () => { setExpanded(); if (details.open && matchMedia("(max-width: 899px)").matches) panel?.focus(); }); setExpanded();
     document.addEventListener("keydown", (event) => { if (event.key === "Escape" && details.open) { details.open = false; trigger?.focus(); } });
