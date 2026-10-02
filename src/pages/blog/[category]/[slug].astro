@@ -17,6 +17,9 @@ import CommentBody from "@features/comments/CommentBody.astro";
 
 let featuredComments: FeaturedComments = {};
 try { featuredComments = JSON.parse(await readFile(path.join(process.cwd(), "worker/registry/featured-comments.json"), "utf8")); } catch { /* Deployment build generates the optional snapshot. */ }
+type RatingSnapshot = Record<string, { ratingValue: number | null; ratingCount: number }>;
+let ratingSnapshot: RatingSnapshot = {};
+try { ratingSnapshot = JSON.parse(await readFile(path.join(process.cwd(), "worker/registry/article-stats.json"), "utf8")); } catch { /* Deployment build generates the optional snapshot. */ }
 
 export async function getStaticPaths() {
   const articles = filterPublished(await getCollection("blog"));
@@ -99,6 +102,8 @@ const breadcrumbs = [
   { name: category.name, url: new URL(`/blog/${category.slug}/`, projectConfig.siteUrl).toString() },
   { name: article.data.title, url: canonical },
 ];
+const rating = ratingSnapshot[article.data.id] ?? { ratingValue: null, ratingCount: 0 };
+const readingMinutes = Math.max(1, Math.ceil(((article.body ?? "").match(/\S+/g)?.length ?? 0) / 200));
 const jsonLd = [
   breadcrumbJsonLd(breadcrumbs),
   blogPostingJsonLd({
@@ -109,6 +114,8 @@ const jsonLd = [
     dateModified: article.data.updatedDate?.toISOString(),
     author: authorProfiles,
     image: new URL(article.data.image.src, projectConfig.siteUrl).toString(),
+    publisher: { name: projectConfig.name, url: projectConfig.siteUrl },
+    rating: rating.ratingValue === null ? undefined : { ratingValue: rating.ratingValue, ratingCount: rating.ratingCount },
   }),
 ];
 const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
@@ -131,8 +138,10 @@ const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
       <div class="article-meta">
         {authorProfiles.map((author) => <a href={author.url}>{author.name}</a>)}
         <time datetime={article.data.publishDate.toISOString()}>{article.data.publishDate.toLocaleDateString("pl-PL")}</time>
+        {article.data.updatedDate && <time datetime={article.data.updatedDate.toISOString()}>Zaktualizowano: {article.data.updatedDate.toLocaleDateString("pl-PL")}</time>}
+        <span>{readingMinutes} min czytania</span>
       </div>
-      <p data-stats-id={article.data.id}><span hidden>Czytelnicy: <span data-reads></span></span><span> · Komentarze: <span data-comments-count>0</span></span></p>
+      <p class="article-stats" data-stats-id={article.data.id}><span hidden>Wyświetlenia: <span data-reads></span></span><span>Komentarze: <span data-comments-count>0</span></span></p>
       <div class="hero__inner">
         <h1 data-pagefind-meta="title">{article.data.title}</h1>
         <p class="lede" data-pagefind-meta="description">{article.data.description}</p>
@@ -150,6 +159,13 @@ const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
     <div class="article-body article-container" data-read-article data-site-id={projectConfig.siteId} data-article-id={article.data.id} data-api-url={projectConfig.apiUrl} data-dedup-seconds={runtimeConfig.readDedupWindowSeconds}>
         <Content />
     </div>
+    <section class="article-rating article-container" data-rating data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-rating-empty="Brak ocen" data-rating-singular="ocena" data-rating-plural="ocen" data-rating-load-error="Nie udało się wczytać oceny. Możesz spróbować ponownie." data-rating-save-error="Nie udało się zapisać oceny. Spróbuj ponownie." data-rating-thanks="Dziękujemy za ocenę." aria-labelledby="rating-title">
+      <h2 id="rating-title">Oceń artykuł</h2>
+      <p class="article-rating__summary" data-rating-summary>{rating.ratingValue === null ? "Brak ocen" : `${rating.ratingValue.toLocaleString("pl-PL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 5 · ${rating.ratingCount} ocen`}</p>
+      <fieldset class="article-rating__choices" disabled aria-describedby="rating-status"><legend class="sr-only">Wybierz ocenę od 1 do 5</legend>{[1, 2, 3, 4, 5].map((value) => <label class="article-rating__choice"><input type="radio" name={`rating-${article.data.id}`} value={value} /><span aria-hidden="true">{value} ★</span><span class="sr-only">{value} z 5</span></label>)}</fieldset>
+      <p class="article-rating__mine" data-rating-mine></p><p id="rating-status" class="article-rating__status" data-rating-status role="status" aria-live="polite">Wczytywanie ocen…</p>
+      <noscript><p>Oceny są dostępne po włączeniu JavaScript.</p></noscript>
+    </section>
     <section class="comment-form article-container" aria-labelledby="comment-title">
       <h2 id="comment-title">Dodaj komentarz</h2>
       <form novalidate data-comment-form data-api-url={projectConfig.apiUrl} data-article-id={article.data.id} data-turnstile-site-key={turnstileSiteKey}>
@@ -173,8 +189,10 @@ const featured = (featuredComments[article.data.id] ?? []).slice(0, 5);
   import { enhanceStats } from "@features/stats/listing";
   import { mountCommentForm } from "@features/comments/form";
   import { mountComments } from "@features/comments/island";
+  import { mountRating } from "@features/rating/island";
   document.querySelectorAll<HTMLElement>("[data-read-article]").forEach(mountReadDetector);
   document.querySelectorAll<HTMLElement>("[data-stats-batch]").forEach((element) => { void enhanceStats(element); });
   document.querySelectorAll<HTMLFormElement>("[data-comment-form]").forEach(mountCommentForm);
   document.querySelectorAll<HTMLElement>("[data-comments]").forEach(mountComments);
+  document.querySelectorAll<HTMLElement>("[data-rating]").forEach(mountRating);
 </script>

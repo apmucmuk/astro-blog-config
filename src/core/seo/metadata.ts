@@ -39,13 +39,15 @@ export function blogPostingJsonLd(input: {
   dateModified?: string;
   author: Array<{ name: string; url: string }>;
   image?: string;
+  publisher: { name: string; url: string };
+  rating?: { ratingValue: number; ratingCount: number };
 }) {
-  return {
+  const posting = {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
     headline: input.headline,
     description: input.description,
-    url: input.url,
+    mainEntityOfPage: { "@type": "WebPage", "@id": input.url },
     datePublished: input.datePublished,
     dateModified: input.dateModified ?? input.datePublished,
     author: input.author.map((person) => ({
@@ -54,7 +56,12 @@ export function blogPostingJsonLd(input: {
       url: person.url,
     })),
     image: input.image,
+    publisher: { "@type": "Organization", name: input.publisher.name, url: input.publisher.url },
   };
+  return input.rating && input.rating.ratingCount > 0 ? {
+    ...posting,
+    aggregateRating: { "@type": "AggregateRating", ratingValue: input.rating.ratingValue, ratingCount: input.rating.ratingCount, bestRating: 5, worstRating: 1 },
+  } : posting;
 }
 
 export function personProfileJsonLd(input: {

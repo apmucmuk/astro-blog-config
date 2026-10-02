@@ -37,6 +37,9 @@ if (environment === "preview" && !publicDeploymentEnv.PUBLIC_API_URL) {
 const snapshot = spawn(process.execPath, ["scripts/generate-featured-comments.mjs", environment], { cwd: process.cwd(), env: process.env, stdio: "inherit" });
 await new Promise((resolve, reject) => snapshot.on("exit", (code) => code === 0 ? resolve() : reject(new Error(`Featured comments snapshot failed (${code}).`))));
 
+const statsSnapshot = spawn(process.execPath, ["scripts/generate-article-stats.mjs", environment], { cwd: process.cwd(), env: process.env, stdio: "inherit" });
+await new Promise((resolve, reject) => statsSnapshot.on("exit", (code) => code === 0 ? resolve() : reject(new Error(`Article stats snapshot failed (${code}).`))));
+
 const child = spawn(process.execPath, [pnpmCli, "build"], {
   cwd: process.cwd(),
   env: { ...publicDeploymentEnv, ...process.env, DEPLOY_ENV: environment },

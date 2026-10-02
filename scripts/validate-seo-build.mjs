@@ -74,6 +74,15 @@ assertExcludes(article, "zaplanowana-przeprowadzka", articlePath);
 const articleJsonLd = structuredData(article, articlePath);
 assertIncludes(JSON.stringify(articleJsonLd), '"@type":"BlogPosting"', `${articlePath} JSON-LD`);
 assertIncludes(JSON.stringify(articleJsonLd), '"@type":"BreadcrumbList"', `${articlePath} JSON-LD`);
+const posting = articleJsonLd.find((item) => item['@type'] === 'BlogPosting');
+assert(posting?.mainEntityOfPage?.['@id'] === 'https://tragarze.pl/blog/poradniki/jak-przygotowac-przeprowadzke/', `${articlePath}: BlogPosting mainEntityOfPage.`);
+assert(posting?.publisher?.['@type'] === 'Organization' && posting.publisher.name === 'tragarze.pl', `${articlePath}: BlogPosting publisher.`);
+assert(!('aggregateRating' in posting) || (posting.aggregateRating.ratingCount > 0 && posting.aggregateRating.ratingValue >= 1 && posting.aggregateRating.ratingValue <= 5), `${articlePath}: BlogPosting aggregate rating must be real.`);
+assertIncludes(article, 'Oceń artykuł', `${articlePath} rating control`);
+assertIncludes(article, 'min czytania', `${articlePath} reading time`);
+assertIncludes(article, 'data-rating', `${articlePath} rating enhancement boundary`);
+assertIncludes(article, '<fieldset class="article-rating__choices" disabled', `${articlePath} rating no-JS safe state`);
+assertIncludes(article, 'Oceny są dostępne po włączeniu JavaScript.', `${articlePath} rating no-JS explanation`);
 
 const profilePath = "redakcja/jan-kowalski/index.html";
 const profile = await readDist(profilePath);

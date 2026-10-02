@@ -148,3 +148,4 @@ worker/wrangler.preview.jsonc
 worker/wrangler.production.jsonc
 worker/registry/content-articles.sql
 worker/registry/featured-comments.json
+worker/registry/article-stats.json
