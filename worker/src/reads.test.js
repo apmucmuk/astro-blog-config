@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { recordRead } from "./reads";
 import { getStats } from "./stats";
 import worker from "./index";
-import { statsResponse } from "./stats-cache";
+import { invalidateStatsCache, statsResponse } from "./stats-cache";
 import { requireReadCapacity } from "./read-limit";
 
 const databases = [];
@@ -126,17 +126,31 @@ describe("snapshot cache and transient limiting", () => {
     const { env, db } = database();
     const saved = new Map();
     const cache = { async match(request) { return saved.get(request.url)?.clone(); }, async put(request, response) { saved.set(request.url, response); } };
-    const request = new Request("https://api.test/v1/stats?site_id=other", { headers: { Cookie: "visitor=private" } });
-    const first = await statsResponse(request, env, cache);
+    const first = await statsResponse(env, cache);
     await recordRead(db, "site", "a");
-    const second = await statsResponse(request, env, cache);
+    const second = await statsResponse(env, cache);
     expect(await second.json()).toEqual(await first.json());
     expect(second.headers.get("Set-Cookie")).toBeNull();
     expect(saved.size).toBe(1);
-    await statsResponse(request, { ...env, SITE_ID: "other" }, cache);
+    await statsResponse({ ...env, SITE_ID: "other" }, cache);
     expect(saved.size).toBe(2);
-    const fresh = await statsResponse(request, env, { async match() { throw Error("offline"); }, async put() { throw Error("offline"); } });
+    const fresh = await statsResponse(env, { async match() { throw Error("offline"); }, async put() { throw Error("offline"); } });
     expect((await fresh.json()).articles.find((row) => row.id === "a").reads).toBe(1);
+  });
+  it("invalidates the shared snapshot after an aggregate mutation", async () => {
+    const { env, db } = database();
+    const saved = new Map();
+    const cache = {
+      async match(request) { return saved.get(request.url)?.clone(); },
+      async put(request, response) { saved.set(request.url, response.clone()); },
+      async delete(request) { return saved.delete(request.url); },
+    };
+    await statsResponse(env, cache);
+    await recordRead(db, "site", "a");
+    await invalidateStatsCache(env, cache);
+    const fresh = await statsResponse(env, cache);
+    expect((await fresh.json()).articles.find((row) => row.id === "a").reads).toBe(1);
+    expect(fresh.headers.get("Cache-Control")).toBe("no-store");
   });
   it("limits concurrent repeats without persistent history, then expires", async () => {
     const { env, sql } = database();
@@ -181,7 +195,7 @@ describe("read API security and cache", () => {
     const { env } = database();
     const response = await worker.fetch(new Request("https://api.test/v1/stats?site_id=other"), env);
     expect(response.status).toBe(200);
-    expect(response.headers.get("Cache-Control")).toBe("public, max-age=3600");
+    expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.get("Set-Cookie")).toBeNull();
     expect((await response.json()).articles).toHaveLength(2);
   });

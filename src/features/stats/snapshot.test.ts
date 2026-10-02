@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchSnapshot, parseSnapshot } from "./snapshot";
+import { fetchSnapshot, invalidateSnapshot, parseSnapshot } from "./snapshot";
 
 const valid = { generatedAt: "2026-09-17T00:00:00Z", articles: [{ id: "a", reads: 1, commentsCount: 0, ratingValue: null, ratingCount: 0 }], rankings: { popular: ["a"], popularNow: ["a"], comments: ["a"], rating: ["a"] } };
 afterEach(() => vi.unstubAllGlobals());
@@ -22,5 +22,13 @@ describe("batch snapshot consumer", () => {
     expect(await fetchSnapshot("https://offline.test")).toBeNull();
     vi.stubGlobal("fetch", vi.fn(async () => new Response("{}")));
     expect(await fetchSnapshot("https://malformed.test")).toBeNull();
+  });
+  it("refetches after an aggregate mutation invalidates its browser snapshot", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify(valid)));
+    vi.stubGlobal("fetch", fetcher);
+    await fetchSnapshot("https://invalidate.test");
+    invalidateSnapshot("https://invalidate.test");
+    await fetchSnapshot("https://invalidate.test");
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });

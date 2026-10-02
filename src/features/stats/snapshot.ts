@@ -18,8 +18,16 @@ export function parseSnapshot(value: unknown): StatsSnapshot {
 }
 
 const requests = new Map<string, Promise<StatsSnapshot | null>>();
+function snapshotUrl(apiUrl: string): string {
+  return new URL("/v1/stats", apiUrl).href;
+}
+
+export function invalidateSnapshot(apiUrl: string): void {
+  requests.delete(snapshotUrl(apiUrl));
+}
+
 export function fetchSnapshot(apiUrl: string): Promise<StatsSnapshot | null> {
-  const url = new URL("/v1/stats", apiUrl).href;
+  const url = snapshotUrl(apiUrl);
   let request = requests.get(url);
   if (!request) {
     request = fetch(url, { credentials: "omit" }).then(async (response) => {

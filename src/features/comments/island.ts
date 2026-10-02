@@ -1,4 +1,5 @@
 import { PUBLIC_COMMENTS_PAGE_SIZE, type CommentsListResponse, type PublicComment } from "@core/api";
+import { fetchSnapshot, invalidateSnapshot } from "../stats/snapshot";
 
 type CommentSurface = HTMLElement & { dataset: DOMStringMap };
 
@@ -50,6 +51,14 @@ export function mountComments(surface: CommentSurface): void {
   const list = surface.querySelector<HTMLUListElement>("[data-comments-list]"); const more = surface.querySelector<HTMLButtonElement>("[data-comments-more]");
   if (!list || !more) return;
   const excluded = featuredIds.split(",").filter(Boolean); let cursor: string | null = null; let loading = false;
+  const refreshCommentsCount = async () => {
+    invalidateSnapshot(apiUrl);
+    const snapshot = await fetchSnapshot(apiUrl);
+    const count = snapshot?.articles.find((article) => article.id === articleId)?.commentsCount;
+    if (count === undefined) return;
+    surface.closest("article")?.querySelectorAll<HTMLElement>(`[data-stats-id="${CSS.escape(articleId)}"] [data-comments-count]`)
+      .forEach((target) => { target.textContent = count.toLocaleString("pl-PL"); });
+  };
   const load = async (reset = false) => {
     if (loading) return; loading = true;
     try {
@@ -79,5 +88,5 @@ export function mountComments(surface: CommentSurface): void {
       catch { button.disabled = false; }
     });
   });
-  surface.closest("article")?.addEventListener("comment:created", () => { void load(true); });
+  surface.closest("article")?.addEventListener("comment:created", () => { void load(true); void refreshCommentsCount(); });
 }

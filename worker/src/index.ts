@@ -24,7 +24,7 @@ import {
 import type { Env } from "./types";
 import { parseReadInput } from "../../src/core/api/reads";
 import { recordRead } from "./reads";
-import { statsResponse } from "./stats-cache";
+import { invalidateStatsCache, statsResponse } from "./stats-cache";
 import { requirePublicMutationCapacity, requireReadCapacity } from "./read-limit";
 import { requireAccess } from "./access";
 import { getOptionalVisitorIdentity, getOrCreateVisitorIdentity } from "./visitor";
@@ -129,7 +129,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (url.pathname === "/v1/stats") {
     return request.method === "GET"
-      ? await statsResponse(request, env)
+      ? await statsResponse(env)
       : methodNotAllowed(mutation);
   }
 
@@ -150,7 +150,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     if (request.method === "POST") {
       const visitor = getOrCreateVisitorIdentity(request, env);
       await requireMutationCapacity(env, env.COMMENT_CREATE_RATE_LIMITER, visitor.visitorId!, "comment-create", env.RATE_LIMIT_COMMENTS);
-      return attachVisitorCookie(mutationJsonResponse(await createComment(env.DB, env, parseCreateCommentRequest(await readStrictJson(request, COMMENT_JSON_MAX_BYTES)))), visitor.setCookie);
+      const result = await createComment(env.DB, env, parseCreateCommentRequest(await readStrictJson(request, COMMENT_JSON_MAX_BYTES)));
+      await invalidateStatsCache(env);
+      return attachVisitorCookie(mutationJsonResponse(result), visitor.setCookie);
     }
     return methodNotAllowed(mutation);
   }
@@ -182,10 +184,13 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
   if (adminCommentId) {
     if (request.method === "PATCH") {
-      return mutationJsonResponse(await moderateComment(env.DB, adminCommentId, parseModerateCommentRequest(await readStrictJson(request, SMALL_JSON_MAX_BYTES))));
+      const result = await moderateComment(env.DB, adminCommentId, parseModerateCommentRequest(await readStrictJson(request, SMALL_JSON_MAX_BYTES)));
+      await invalidateStatsCache(env);
+      return mutationJsonResponse(result);
     }
     if (request.method === "DELETE") {
       await deleteComment(env.DB, adminCommentId);
+      await invalidateStatsCache(env);
       return mutationJsonResponse({ status: "deleted" });
     }
     return methodNotAllowed(mutation);
