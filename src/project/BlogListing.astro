@@ -4,6 +4,7 @@ import { projectConfig } from "./site.config";
 import { navigation } from "./navigation";
 import { buildListing, listingPageSize } from "./listing";
 import { collectionPage } from "@features/stats/collection";
+import InlineSearch from "@features/search/InlineSearch.astro";
 import ListingSurface from "./ListingSurface.astro";
 const { page = 1 } = Astro.props;
 const { entries, manifestUrl } = await buildListing();
@@ -12,7 +13,10 @@ const { items, total } = collectionPage(entries, "newest", page, listingPageSize
 <BaseLayout title={`Blog - ${projectConfig.name}`} description="Poradniki o przygotowaniu i organizacji przeprowadzki." locale={projectConfig.locale} siteName={projectConfig.name} navigation={navigation}>
   <section class="container page-section">
     <h1>Blog</h1>
-    <ListingSurface base="/blog/" {items} {total} {page} {manifestUrl} allowedSorts={["newest", "popularNow", "rating", "comments", "updated"]} />
+    <InlineSearch id="blog-search-query" filter="content_type:blog" catalogId="blog-catalog" label="Szukaj w artykułach" placeholder="Szukaj artykułów..." />
+    <div id="blog-catalog">
+      <ListingSurface base="/blog/" {items} {total} {page} {manifestUrl} allowedSorts={["newest", "popularNow", "rating", "comments", "updated"]} />
+    </div>
   </section>
 </BaseLayout>
 <script>

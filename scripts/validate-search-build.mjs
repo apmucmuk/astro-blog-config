@@ -20,6 +20,13 @@ assert(indexFiles.some((file) => file.endsWith(".pf_index")), "Production Pagefi
 const article = await readDist("blog/poradniki/jak-przygotowac-przeprowadzke/index.html");
 assert(article.includes("data-pagefind-body"), "Published article must be marked as Pagefind content.");
 assert(article.includes('data-pagefind-meta="title"'), "Published article title metadata is missing.");
+assert(article.includes('data-pagefind-filter="content_type:blog"'), "Published article must expose a Pagefind blog filter.");
+
+const blog = await readDist("blog/index.html");
+assert(blog.includes("data-inline-search"), "Blog must expose its inline Pagefind search.");
+assert(blog.includes('data-search-filter="content_type:blog"'), "Blog search must constrain results using Pagefind metadata.");
+assert(blog.includes('placeholder="Szukaj artykułów..."'), "Blog search must use the agreed placeholder.");
+assert(blog.includes('id="blog-catalog"'), "Blog search must retain the no-JS catalog target.");
 
 const draft = await readDist("blog/poradniki/jak-przygotowac-przeprowadzke/index.html");
 assert(!draft.includes("szkic-przeprowadzki") && !draft.includes("zaplanowana-przeprowadzka"), "Draft/scheduled content leaked into published output.");
@@ -87,6 +94,19 @@ try {
   }
   await page.locator("#search-query").focus();
   assert(await page.evaluate(() => document.activeElement?.id === "search-query"), "Search input cannot receive keyboard focus.");
+
+  const blogPage = await context.newPage();
+  await blogPage.goto(`${baseUrl}/blog/`, { waitUntil: "networkidle" });
+  assert(await blogPage.locator("#blog-catalog").isVisible(), "Blog catalog must be visible before a query.");
+  await blogPage.locator("#blog-search-query").fill("przygotować przeprowadzkę");
+  await blogPage.waitForFunction(() => document.getElementById("blog-catalog")?.hidden);
+  await blogPage.waitForFunction(() => !document.querySelector("[data-inline-search-status]")?.textContent?.includes("Wyszukiwanie..."));
+  assert(!(await blogPage.locator("#blog-catalog").isVisible()), "Blog catalog must hide during a non-empty inline query.");
+  assert((await blogPage.locator("[data-inline-search-results] a").count()) > 0, "Inline blog search must render Pagefind results.");
+  await blogPage.locator("#blog-search-query").fill("");
+  await blogPage.waitForFunction(() => !document.getElementById("blog-catalog")?.hidden);
+  assert(await blogPage.locator("#blog-catalog").isVisible(), "Clearing the inline query must restore the catalog without navigation.");
+  assert(await blogPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Inline search must not overflow at 390px.");
   await context.close();
 } finally {
   await browser?.close();

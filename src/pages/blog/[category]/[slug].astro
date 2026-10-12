@@ -132,7 +132,7 @@ const shareMailto = `mailto:?subject=${encodeURIComponent(article.data.title)}&b
     <link rel="alternate" hreflang="x-default" href={metadata.canonical} />
     {jsonLd.map((item) => <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />)}
   </Fragment>
-  <article data-stats-batch data-api-url={projectConfig.apiUrl} data-pagefind-body={searchIndexable ? true : undefined} data-pagefind-ignore={searchIndexable ? undefined : true}>
+  <article data-stats-batch data-api-url={projectConfig.apiUrl} data-pagefind-body={searchIndexable ? true : undefined} data-pagefind-filter="content_type:blog" data-pagefind-ignore={searchIndexable ? undefined : true}>
     <header class="article-header article-container">
       <nav class="breadcrumb" aria-label="Breadcrumbs">
         {breadcrumbs.map((item, index) => (

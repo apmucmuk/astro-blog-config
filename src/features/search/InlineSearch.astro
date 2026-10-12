@@ -1,0 +1,31 @@
+---
+type Props = {
+  id: string;
+  filter: string;
+  catalogId: string;
+  label?: string;
+  placeholder?: string;
+};
+
+const {
+  id,
+  filter,
+  catalogId,
+  label = "Szukaj w katalogu",
+  placeholder = "Szukaj...",
+} = Astro.props;
+---
+
+<section class="inline-search" data-inline-search data-search-filter={filter} data-search-catalog={catalogId}>
+  <form class="search-form" role="search" novalidate>
+    <label for={id}>{label}</label>
+    <div class="search-form__controls">
+      <input id={id} name="q" type="search" inputmode="search" autocomplete="off" maxlength="120" placeholder={placeholder} />
+      <button type="submit">Szukaj</button>
+    </div>
+  </form>
+  <p class="search-status" aria-live="polite" data-inline-search-status hidden></p>
+  <ol class="search-results" data-inline-search-results hidden></ol>
+</section>
+
+<script is:inline type="module" src="/scripts/pagefind-inline-search.js"></script>
