@@ -11,6 +11,7 @@ const search = await readDist("szukaj/index.html");
 assert(search.includes('meta name="robots" content="noindex,follow"'), "Search page must be noindex.");
 assert(search.includes('role="search"'), "Search page must expose a search landmark.");
 assert(search.includes("Wyszukiwanie jest dostępne po włączeniu JavaScript"), "Search page needs a no-JS fallback.");
+assert(!search.includes('href="/szukaj/"'), "Legacy search route must not link to itself from primary navigation.");
 
 const pagefindFiles = await readdir(path.join(dist, "pagefind"));
 const indexFiles = await readdir(path.join(dist, "pagefind", "index"));
@@ -27,6 +28,7 @@ assert(blog.includes("data-inline-search"), "Blog must expose its inline Pagefin
 assert(blog.includes('data-search-filter="content_type:blog"'), "Blog search must constrain results using Pagefind metadata.");
 assert(blog.includes('placeholder="Szukaj artykułów..."'), "Blog search must use the agreed placeholder.");
 assert(blog.includes('id="blog-catalog"'), "Blog search must retain the no-JS catalog target.");
+assert(!blog.includes('href="/szukaj/"'), "Primary navigation must no longer promote the legacy search route.");
 
 const tools = await readDist("narzedzia/index.html");
 assert(tools.includes("data-inline-search"), "Tools must expose its inline Pagefind search.");
@@ -76,6 +78,13 @@ try {
   assert(await noJsToolsPage.locator("body").evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Tools page overflows at 320px without JS.");
   await noJsTools.close();
 
+  const noJsBlog = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 1280, height: 800 } });
+  const noJsBlogPage = await noJsBlog.newPage();
+  await noJsBlogPage.goto(`${baseUrl}/blog/`, { waitUntil: "domcontentloaded" });
+  assert(await noJsBlogPage.locator("#blog-catalog").isVisible(), "No-JS blog catalog fallback is missing.");
+  assert(await noJsBlogPage.locator("[data-stats-list] a").count() > 0, "No-JS blog catalog must retain publication links.");
+  await noJsBlog.close();
+
   const context = await browser.newContext({ viewport: { width: 390, height: 800 }, isMobile: true });
   const page = await context.newPage();
   const browserErrors = [];
@@ -111,6 +120,8 @@ try {
   const blogPage = await context.newPage();
   await blogPage.goto(`${baseUrl}/blog/`, { waitUntil: "networkidle" });
   assert(await blogPage.locator("#blog-catalog").isVisible(), "Blog catalog must be visible before a query.");
+  await blogPage.locator("#blog-search-query").focus();
+  assert(await blogPage.evaluate(() => document.activeElement?.id === "blog-search-query"), "Inline blog search cannot receive keyboard focus.");
   await blogPage.locator("#blog-search-query").fill("przygotować przeprowadzkę");
   await blogPage.waitForFunction(() => document.getElementById("blog-catalog")?.hidden);
   await blogPage.waitForFunction(() => !document.querySelector("[data-inline-search-status]")?.textContent?.includes("Wyszukiwanie..."));
@@ -120,6 +131,8 @@ try {
   await blogPage.waitForFunction(() => !document.getElementById("blog-catalog")?.hidden);
   assert(await blogPage.locator("#blog-catalog").isVisible(), "Clearing the inline query must restore the catalog without navigation.");
   assert(await blogPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Inline search must not overflow at 390px.");
+  await blogPage.setViewportSize({ width: 1280, height: 800 });
+  assert(await blogPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Inline search must not overflow at desktop width.");
 
   const toolsPage = await context.newPage();
   await toolsPage.goto(`${baseUrl}/narzedzia/`, { waitUntil: "networkidle" });
