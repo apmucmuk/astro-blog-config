@@ -2,6 +2,7 @@
 import { breadcrumbJsonLd, seoMetadata } from "@core/seo/metadata";
 import { navigation } from "@project/navigation";
 import { projectConfig } from "@project/site.config";
+import InlineSearch from "@features/search/InlineSearch.astro";
 import BaseLayout from "@theme/layouts/BaseLayout.astro";
 
 const metadata = seoMetadata({
@@ -30,9 +31,12 @@ const breadcrumbs = [
     </div>
   </section>
   <section class="page-section container" aria-labelledby="tools-heading">
-    <div class="card">
-      <h2 id="tools-heading">Narzędzia w przygotowaniu</h2>
-      <p>Obecnie nie ma jeszcze zatwierdzonych narzędzi do opublikowania.</p>
+    <InlineSearch id="tools-search-query" filter="content_type:tool" catalogId="tools-catalog" label="Szukaj w narzędziach" placeholder="Szukaj narzędzi..." />
+    <div id="tools-catalog">
+      <div class="card">
+        <h2 id="tools-heading">Narzędzia w przygotowaniu</h2>
+        <p>Obecnie nie ma jeszcze zatwierdzonych narzędzi do opublikowania.</p>
+      </div>
     </div>
   </section>
 </BaseLayout>

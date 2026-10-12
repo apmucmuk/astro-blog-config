@@ -28,6 +28,12 @@ assert(blog.includes('data-search-filter="content_type:blog"'), "Blog search mus
 assert(blog.includes('placeholder="Szukaj artykułów..."'), "Blog search must use the agreed placeholder.");
 assert(blog.includes('id="blog-catalog"'), "Blog search must retain the no-JS catalog target.");
 
+const tools = await readDist("narzedzia/index.html");
+assert(tools.includes("data-inline-search"), "Tools must expose its inline Pagefind search.");
+assert(tools.includes('data-search-filter="content_type:tool"'), "Tools search must constrain results using Pagefind metadata.");
+assert(tools.includes('placeholder="Szukaj narzędzi..."'), "Tools search must use the agreed placeholder.");
+assert(tools.includes('id="tools-catalog"'), "Tools search must retain the no-JS catalog target.");
+
 const draft = await readDist("blog/poradniki/jak-przygotowac-przeprowadzke/index.html");
 assert(!draft.includes("szkic-przeprowadzki") && !draft.includes("zaplanowana-przeprowadzka"), "Draft/scheduled content leaked into published output.");
 
@@ -62,6 +68,13 @@ try {
   assert((await noJsPage.locator("noscript").textContent())?.includes("Wyszukiwanie jest dostępne"), "No-JS fallback is missing.");
   assert(await noJsPage.locator("body").evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Search page overflows at 320px.");
   await noJs.close();
+
+  const noJsTools = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 320, height: 800 }, isMobile: true });
+  const noJsToolsPage = await noJsTools.newPage();
+  await noJsToolsPage.goto(`${baseUrl}/narzedzia/`, { waitUntil: "domcontentloaded" });
+  assert(await noJsToolsPage.locator("#tools-catalog").isVisible(), "No-JS tools catalog fallback is missing.");
+  assert(await noJsToolsPage.locator("body").evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Tools page overflows at 320px without JS.");
+  await noJsTools.close();
 
   const context = await browser.newContext({ viewport: { width: 390, height: 800 }, isMobile: true });
   const page = await context.newPage();
@@ -107,6 +120,19 @@ try {
   await blogPage.waitForFunction(() => !document.getElementById("blog-catalog")?.hidden);
   assert(await blogPage.locator("#blog-catalog").isVisible(), "Clearing the inline query must restore the catalog without navigation.");
   assert(await blogPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Inline search must not overflow at 390px.");
+
+  const toolsPage = await context.newPage();
+  await toolsPage.goto(`${baseUrl}/narzedzia/`, { waitUntil: "networkidle" });
+  assert(await toolsPage.locator("#tools-catalog").isVisible(), "Tools catalog must be visible before a query.");
+  await toolsPage.locator("#tools-search-query").fill("przygotować przeprowadzkę");
+  await toolsPage.waitForFunction(() => document.getElementById("tools-catalog")?.hidden);
+  await toolsPage.waitForFunction(() => !document.querySelector("[data-inline-search-status]")?.textContent?.includes("Wyszukiwanie..."));
+  assert(await toolsPage.locator("[data-inline-search-status]").textContent() === "Nie znaleziono wyników.", "Tools search must not return blog publications.");
+  assert((await toolsPage.locator("[data-inline-search-results] a").count()) === 0, "Tools search must remain empty until approved tools exist.");
+  await toolsPage.locator("#tools-search-query").fill("");
+  await toolsPage.waitForFunction(() => !document.getElementById("tools-catalog")?.hidden);
+  assert(await toolsPage.locator("#tools-catalog").isVisible(), "Clearing the tools query must restore the catalog without navigation.");
+  assert(await toolsPage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), "Tools inline search must not overflow at 390px.");
   await context.close();
 } finally {
   await browser?.close();

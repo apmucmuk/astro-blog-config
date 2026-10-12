@@ -10,6 +10,10 @@ function createFilter(value) {
   return name && expected ? { [name]: expected } : undefined;
 }
 
+// Future interactive tools must expose a static Astro page description with
+// data-pagefind-filter="content_type:tool". Pagefind indexes that static HTML,
+// never the state of a client-side island.
+
 async function mountInlineSearch(root) {
   const form = root.querySelector("form");
   const input = root.querySelector("input[type='search']");
